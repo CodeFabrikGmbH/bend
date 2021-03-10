@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta charset="utf-8"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css"/>
+    <title></title>
+    <script>
+        function openPath(path) {
+            window.location = "/dashboard/" + path;
+        }
+
+        function openRequest() {
+            let requestId = document.getElementById("requestId").value;
+            window.location = "/dashboard/" + {{ .CurrentPath }} + "?requestId=" + requestId;
+        }
+
+        function sendRequest() {
+            let requestId = document.getElementById("requestId").value;
+            let target = encodeURIComponent(document.getElementById("requestTargetUrl").value)
+            let sendUrl = "/sendRequest/" + {{ .CurrentPath }} + "?requestId=" + requestId + "&targetUrl=" + target;
+
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.onreadystatechange = function () {
+                if (xmlHttp.readyState === XMLHttpRequest.DONE) {
+                    window.alert(xmlHttp.responseText);
+                    hideModal();
+                }
+            }
+            xmlHttp.open("GET", sendUrl, true); // true for asynchronous
+            xmlHttp.send(null);
+        }
+
+        function hideModal() {
+            let modal = document.getElementById("sendRequestPopup");
+            modal.style.display = "none";
+        }
+
+        function init() {
+            document.getElementById("requestId").value = "{{ .RequestDetails.ID }}";
+
+            let modal = document.getElementById("sendRequestPopup");
+            let btn = document.getElementById("sendRequestOpenPopupBtn");
+            let span = document.getElementsByClassName("close")[0];
+            btn.onclick = function() {
+                modal.style.display = "block";
+            }
+            span.onclick = function() {
+                modal.style.display = "none";
+            }
+            window.onclick = function(event) {
+                if (event.target === modal) {
+                    modal.style.display = "none";
+                }
+            }
+
+            let openReadme = document.getElementById("openReadme");
+            openReadme.onclick = () => {
+                window.open('/readme');
+            };
+        }
+
+        window.onload = init;
+
+    </script>
+</head>
+
+<body>
+<div class="page-header">
+    <p class="page-header-title">Bend</p>
+    <button id="openReadme">?</button>
+</div>
+
+<div style="width: 100%">
+    <table class="table-style">
+        <tr>
+            <th>Request Count</th>
+            <th>Path</th>
+        </tr>
+        {{ with .Paths }}
+        {{ range . }}
+        <tr onclick="openPath({{.Path}})">
+            <td>{{.Count}}</td>
+            <td>{{.Path}}</td>
+        </tr>
+        {{ end }}
+        {{ end }}
+    </table>
+
+    <div class="table-style" style="width: 100%">
+        <h1>{{ .CurrentPath }}</h1>
+
+        <select class="select-css" id="requestId" onchange="openRequest()">
+            {{ with .Requests }}
+            {{ range . }}
+                <option value="{{ .ID }}">{{ .Timestamp }}</option>
+            {{ end }}
+            {{ end }}
+        </select>
+
+        <button class="button" id="sendRequestOpenPopupBtn">Send Request to custom url</button>
+
+        <table class="request-details-style">
+            {{ with .RequestDetails }}
+                <tr>
+                    <td>Timestamp</td>
+                    <td>{{.Timestamp}}</td>
+                </tr>
+                <tr>
+                    <td>Host</td>
+                    <td>{{.Host}}</td>
+                </tr>
+                <tr>
+                    <td>Uri</td>
+                    <td>{{.Uri}}</td>
+                </tr>
+                <tr>
+                    <td>Method</td>
+                    <td>{{.Method}}</td>
+                </tr>
+                <tr>
+                    <td>Body</td>
+                    <td>{{.Body}}</td>
+                </tr>
+                <tr>
+                    <td>Header</td>
+                    <td>
+                        <table style = "width: 500px;">
+                            {{ range $key, $value := .Header }}
+                            <tr>
+                                <td>{{ $key }}</td>
+                                <td>{{ $value }}</td>
+                            </tr>
+                            {{ end }}
+                        </table>
+
+                    </td>
+                </tr>
+            {{ end }}
+        </table>
+
+    </div>
+
+</div>
+
+<div id="sendRequestPopup" class="modal">
+    <!-- Modal content -->
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <p>Enter custom url to send this request to</p>
+        <input style="width: 100%" type="text" id="requestTargetUrl" value="http://localhost:8080{{ .RequestDetails.Uri }}">
+        <button class="button" onclick="sendRequest()">Send</button>
+    </div>
+
+</div>
+
+</body>
