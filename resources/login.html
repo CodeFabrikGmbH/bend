@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta charset="utf-8"/>
+
+    <style>
+        .center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+    </style>
+
+    <script>
+        // redirect if logged in and origin is given
+        {{if and .Origin .Name }}
+            window.location = {{ .Origin }}
+        {{end}}
+    </script>
+
+    <title></title>
+</head>
+
+<body>
+
+{{if .Name }}
+    <form class="center">
+        <div class="content-group">
+            <div class="label-column">{{ .Name }}</div>
+            {{/* hidden field to know that this is a logout */}}
+            <input type="hidden" name="logout" value="true" />
+            <input class="theme-button" type="submit" value="Logout">
+        </div>
+    </form>
+{{else}}
+    <form class="center">
+        <div class="content-group">
+            <table style="table-layout: fixed">
+                <tr>
+                    <td class="label-column">
+                        <label for="username">Username</label>
+                    </td>
+                    <td class="input-column">
+                        <input style="width: 100%;" type="text" id="username" name="username" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label-column">
+                        <label for="password">Password</label>
+                    </td>
+                    <td class="input-column">
+                        <input style="width: 100%;" type="password" id="password" name="password" required/>
+                    </td>
+                </tr>
+
+                {{ if .Error }}
+                <tr>
+                    <td class="label-column">
+                    </td>
+                    <td class="input-column">
+                        <div style="color: red;">{{ .Error }}</div>
+                    </td>
+                </tr>
+                {{ end }}
+
+                <tr>
+                    <td class="label-column">
+                    </td>
+                    <td class="input-column">
+                        <input style="width: 100%;" class="theme-button" type="submit" value="Login">
+                    </td>
+                </tr>
+
+            </table>
+        </div>
+
+        {{/* hidden field for keeping origin information */}}
+        <input type="hidden" name="origin" value="{{ .Origin }}" />
+
+
+    </form>
+{{end}}
+
+</body>
+
+</html>

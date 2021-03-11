@@ -1,7 +1,7 @@
-package dashboard
+package dashboardpage
 
 import "net/http"
 
-type Presenter interface {
+type Page interface {
 	Present(w http.ResponseWriter, board DashBoard)
 }

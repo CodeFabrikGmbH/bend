@@ -1,4 +1,4 @@
-package dashboard
+package dashboardpage
 
 import (
 	"code-fabrik.com/bend/domain/request"
