@@ -8,4 +8,4 @@ curl -v \
   -H "Authorization: Bearer bearerDataStuff" \
   -H "Content-Type: application/json" \
   -d "{ \"happenedAt\": \"${CURRENTDATE}\", \"description\": \"Something happened.\" }" \
-  "http://localhost:8080/other-endpoint?testParameter=Y"
+  "https://api.go-gaming.de/endpoint?testParameter=Y"

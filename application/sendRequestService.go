@@ -1,7 +1,7 @@
 package application
 
 import (
-	"code-fabrik.com/bend/domain/request"
+	"code-fabrik.com/bend/domain/environment"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,8 +9,7 @@ import (
 )
 
 type SendRequestService struct {
-	RequestRepository request.Repository
-	TransportService  request.Transport
+	Env environment.Environment
 }
 
 func (rs SendRequestService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -37,8 +36,8 @@ func (rs SendRequestService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := rs.RequestRepository.GetRequest(path, *requestId)
-	response := rs.TransportService.SendRequestToTarget(req, *targetUrl)
+	req := rs.Env.RequestRepository.GetRequest(path, *requestId)
+	response := rs.Env.Transport.SendRequestToTarget(req, *targetUrl)
 
 	marshal, _ := json.Marshal(response)
 	w.WriteHeader(http.StatusOK)

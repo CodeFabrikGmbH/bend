@@ -14,7 +14,7 @@ type RequestRepository struct {
 	DB *bolt.DB
 }
 
-func Create() RequestRepository {
+func CreateRequestRepository() RequestRepository {
 	db, err := bolt.Open("db/my.db", 0600, nil)
 	if err != nil {
 		panic(err)

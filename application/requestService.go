@@ -1,6 +1,7 @@
 package application
 
 import (
+	"code-fabrik.com/bend/domain/environment"
 	"code-fabrik.com/bend/domain/request"
 	"fmt"
 	"io"
@@ -10,7 +11,7 @@ import (
 )
 
 type RequestService struct {
-	RequestRepository request.Repository
+	Env environment.Environment
 }
 
 func (rs RequestService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +23,7 @@ func (rs RequestService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	req := createRequestObject(r)
-	err := rs.RequestRepository.Save(req)
+	err := rs.Env.RequestRepository.Save(req)
 	if err != nil {
 		panic(err)
 	}
