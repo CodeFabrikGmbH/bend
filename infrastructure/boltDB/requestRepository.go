@@ -3,6 +3,7 @@ package boltDB
 import (
 	"code-fabrik.com/bend/domain/request"
 	"encoding/json"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"strconv"
 	"strings"
@@ -144,4 +145,24 @@ func (rr RequestRepository) GetPaths() []string {
 		panic(err)
 	}
 	return result
+}
+
+func (rr RequestRepository) DeletePath(path string) error {
+	db := rr.DB
+
+	return db.Update(func(txn *bolt.Tx) error {
+		return txn.DeleteBucket([]byte(bucketName(path)))
+
+	})
+}
+func (rr RequestRepository) DeleteRequestForPath(path string, id string) error {
+	db := rr.DB
+
+	return db.Update(func(txn *bolt.Tx) error {
+		bucket := txn.Bucket([]byte(bucketName(path)))
+		if bucket == nil {
+			return fmt.Errorf("bucket not found")
+		}
+		return bucket.Delete([]byte(id))
+	})
 }

@@ -7,4 +7,7 @@ type Repository interface {
 	GetRequestCountForPath(path string) int
 	GetRequestsForPath(path string) []Request
 	GetRequest(path string, id string) Request
+
+	DeletePath(path string) error
+	DeleteRequestForPath(path string, id string) error
 }

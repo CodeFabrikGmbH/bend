@@ -15,6 +15,39 @@
             window.location = "/dashboard/" + {{ .CurrentPath }} + "?requestId=" + requestId;
         }
 
+        function deletePath(path) {
+            let r = confirm("Delete all requests for path?");
+            if (r === true) {
+                let sendUrl = "/delete/" + path;
+
+                var xmlHttp = new XMLHttpRequest();
+                xmlHttp.onreadystatechange = function () {
+                    if (xmlHttp.readyState === XMLHttpRequest.DONE) {
+                        window.location.reload();
+                    }
+                }
+                xmlHttp.open("GET", sendUrl, true); // true for asynchronous
+                xmlHttp.send(null);
+            }
+        }
+
+        function deleteRequest() {
+            let r = confirm("Delete this request?");
+            if (r === true) {
+                let requestId = document.getElementById("requestId").value;
+                let sendUrl = "/delete/" + {{ .CurrentPath }} + "?requestId=" + requestId;
+
+                var xmlHttp = new XMLHttpRequest();
+                xmlHttp.onreadystatechange = function () {
+                    if (xmlHttp.readyState === XMLHttpRequest.DONE) {
+                        window.location.reload();
+                    }
+                }
+                xmlHttp.open("GET", sendUrl, true); // true for asynchronous
+                xmlHttp.send(null);
+            }
+        }
+
         function sendRequest() {
             let requestId = document.getElementById("requestId").value;
             let target = encodeURIComponent(document.getElementById("requestTargetUrl").value)
@@ -76,12 +109,14 @@
         <tr>
             <th>Request Count</th>
             <th>Path</th>
+            <th></th>
         </tr>
         {{ with .Paths }}
         {{ range . }}
-        <tr onclick="openPath({{.Path}})">
-            <td>{{.Count}}</td>
-            <td>{{.Path}}</td>
+        <tr>
+            <td onclick="openPath({{.Path}})">{{.Count}}</td>
+            <td onclick="openPath({{.Path}})">{{.Path}}</td>
+            <td onclick="deletePath({{.Path}})"><i class="gg-trash"></i></td>
         </tr>
         {{ end }}
         {{ end }}
@@ -98,7 +133,10 @@
             {{ end }}
         </select>
 
-        <button class="button" id="sendRequestOpenPopupBtn">Send Request to custom url</button>
+        <div>
+            <button class="button" style="width: 200px;" id="sendRequestOpenPopupBtn">Send Request to custom url</button>
+            <button class="button" style="width: 200px;" onclick="deleteRequest()">Delete Request</button>
+        </div>
 
         <table class="request-details-style">
             {{ with .RequestDetails }}
@@ -149,7 +187,7 @@
         <span class="close">&times;</span>
         <p>Enter custom url to send this request to</p>
         <input style="width: 100%" type="text" id="requestTargetUrl" value="http://localhost:8080{{ .RequestDetails.Uri }}">
-        <button class="button" onclick="sendRequest()">Send</button>
+        <button class="largeButton" onclick="sendRequest()">Send</button>
     </div>
 
 </div>

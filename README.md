@@ -14,6 +14,8 @@ Some endpoints are not available for tracking as they are in use for internal pu
 * /dashboard
   
 * /static
+
+* /delete
   
 * /sendRequest
   

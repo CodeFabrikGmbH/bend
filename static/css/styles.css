@@ -24,7 +24,7 @@ body, html {
     color: #ffffff;
     width: 100%;
     border-radius: 4px;
-    background-image: linear-gradient(135deg, rgba(7,97,142,1) 0%, rgba(75,181,210,1) 75%, rgba(27,117,162,1) 100%), url('/favicon.ico');
+    background-image: linear-gradient(135deg, rgba(7,97,142,1) 0%, rgba(75,181,210,1) 75%, rgba(27,117,162,1) 100%);
     box-shadow: 0 2px 5px #2a2a2a;
 }
 
@@ -103,7 +103,6 @@ td:hover {
 
 .button {
     color: #222;
-    width: 100%;
     height: 50px;
     border-radius: 5px;
     background-color: #fff;
@@ -111,6 +110,19 @@ td:hover {
 }
 
 .button:hover {
+    background-color: #ccc;
+}
+
+.largeButton {
+    color: #222;
+    width: 100%;
+    height: 50px;
+    border-radius: 5px;
+    background-color: #fff;
+    border: 1px solid #aaa;
+}
+
+.largeButton:hover {
     background-color: #ccc;
 }
 
@@ -157,3 +169,49 @@ td:hover {
     text-decoration: none;
     cursor: pointer;
 }
+
+.gg-trash {
+    box-sizing: border-box;
+    position: relative;
+    display: block;
+    transform: scale(var(--ggs,1));
+    width: 10px;
+    height: 12px;
+    border: 2px solid transparent;
+    box-shadow:
+            0 0 0 2px,
+            inset -2px 0 0,
+            inset 2px 0 0;
+    border-bottom-left-radius: 1px;
+    border-bottom-right-radius: 1px;
+    margin-top: 4px
+}
+
+.gg-trash::after,
+.gg-trash::before {
+    content: "";
+    display: block;
+    box-sizing: border-box;
+    position: absolute
+}
+
+.gg-trash::after {
+    background: currentColor;
+    border-radius: 3px;
+    width: 16px;
+    height: 2px;
+    top: -4px;
+    left: -5px
+}
+
+.gg-trash::before {
+    width: 10px;
+    height: 4px;
+    border: 2px solid;
+    border-bottom: transparent;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+    top: -7px;
+    left: -2px
+}
+

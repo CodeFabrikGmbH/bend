@@ -26,7 +26,9 @@ func main() {
 
 	http.Handle("/login", application.LoginPage{Env: env})
 	http.Handle("/dashboard/", application.DashboardPage{Env: env})
+	http.Handle("/delete/", application.DeletionService{Env: env})
 	http.Handle("/sendRequest/", application.SendRequestService{Env: env})
+
 	http.Handle("/", application.RequestService{Env: env})
 
 	err := http.ListenAndServe(":8080", nil)
