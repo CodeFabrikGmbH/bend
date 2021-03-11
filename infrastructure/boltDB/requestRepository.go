@@ -14,8 +14,20 @@ type RequestRepository struct {
 	DB *bolt.DB
 }
 
+func Create() RequestRepository {
+	db, err := bolt.Open("db/my.db", 0600, nil)
+	if err != nil {
+		panic(err)
+	}
+	return RequestRepository{DB: db}
+}
+
 func bucketName(path string) string {
 	return bucketPrefix + path
+}
+
+func (rr RequestRepository) Close() {
+	_ = rr.DB.Close()
 }
 
 func (rr RequestRepository) Save(req request.Request) error {

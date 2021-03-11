@@ -1,4 +1,4 @@
-package application
+package markdown
 
 import (
 	"fmt"
@@ -8,10 +8,15 @@ import (
 	"net/http"
 )
 
-type ReadmeService struct {
+type Server struct {
+	File string
 }
 
-func (rs ReadmeService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func FileServer(file string) Server {
+	return Server{File: file}
+}
+
+func (rs Server) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			fmt.Println(rec)
@@ -22,12 +27,12 @@ func (rs ReadmeService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	opts := html.RendererOptions{Flags: htmlFlags}
 	renderer := html.NewRenderer(opts)
 
-	data, err := ioutil.ReadFile("README.md")
+	data, err := ioutil.ReadFile(rs.File)
 	if err != nil {
 		fmt.Println("File reading error", err)
 		return
 	}
 
-	html := markdown.ToHTML(data, nil, renderer)
-	w.Write(html)
+	htmlData := markdown.ToHTML(data, nil, renderer)
+	_, _ = w.Write(htmlData)
 }
