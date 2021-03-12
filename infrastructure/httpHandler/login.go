@@ -31,7 +31,8 @@ func (lp LoginPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		origin := query.Get("origin")
 
 		user, _ := lp.KeyCloakService.Authenticate(w, r)
-		htmlTemplate.PresentLoginPage(w, createLoginData(user, origin, ""))
+
+		htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginData(user, origin, ""))
 	}
 }
 
@@ -47,12 +48,12 @@ func (lp LoginPage) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 		errorString = "bad credentials"
 	}
 
-	htmlTemplate.PresentLoginPage(w, createLoginData(user, origin, errorString))
+	htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginData(user, origin, errorString))
 }
 
 func (lp LoginPage) logout(ctx context.Context, w http.ResponseWriter) {
 	lp.KeyCloakService.Logout(ctx, w)
-	htmlTemplate.PresentLoginPage(w, createLoginData(nil, "", ""))
+	htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginData(nil, "", ""))
 }
 
 func (lp LoginPage) isLogoutRequest(r *http.Request) bool {

@@ -14,14 +14,14 @@ type DashboardPage struct {
 	DashboardService application.DashboardService
 }
 
-func (rs DashboardPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (dp DashboardPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			fmt.Println(rec)
 		}
 	}()
 
-	_, err := rs.KeyCloakService.Authenticate(w, r)
+	_, err := dp.KeyCloakService.Authenticate(w, r)
 	if err != nil {
 		http.Redirect(w, r, "/login?origin="+r.RequestURI, http.StatusTemporaryRedirect)
 		return
@@ -30,6 +30,6 @@ func (rs DashboardPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/dashboard")
 	requestId := getQueryValueOrNil(r.URL.Query(), "requestId")
 
-	dashBoardData := rs.DashboardService.GetDashboardData(path, requestId)
-	htmlTemplate.PresentDashboardPage(w, dashBoardData)
+	dashBoardData := dp.DashboardService.GetDashboardData(path, requestId)
+	htmlTemplate.PresentHtmlTemplate(w, "resources/dashboard.html", dashBoardData)
 }

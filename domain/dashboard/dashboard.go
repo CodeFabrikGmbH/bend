@@ -27,7 +27,7 @@ type RequestDetails struct {
 	Response  request.Response    `json:"response"`
 }
 
-type DashBoard struct {
+type DashBoardData struct {
 	Paths          []Path
 	CurrentPath    string
 	Requests       []Request

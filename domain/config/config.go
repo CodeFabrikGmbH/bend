@@ -6,7 +6,12 @@ type Response struct {
 }
 
 type Config struct {
-	Path     string    `json:"path"`
-	Target   string    `json:"target"`
-	Response *Response `json:"response"`
+	Path     string   `json:"path"`
+	Target   string   `json:"target"`
+	Response Response `json:"response"`
+}
+
+type ConfigData struct {
+	Configs       []Config
+	CurrentConfig Config
 }

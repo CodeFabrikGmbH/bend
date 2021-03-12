@@ -10,13 +10,13 @@ type DashboardService struct {
 	Env environment.Environment
 }
 
-func (ds DashboardService) GetDashboardData(path string, requestId *string) dashboard.DashBoard {
+func (ds DashboardService) GetDashboardData(path string, requestId *string) dashboard.DashBoardData {
 	requests := ds.getRequests(path)
 	if requestId == nil && len(requests) > 0 {
 		requestId = &requests[0].ID
 	}
 
-	return dashboard.DashBoard{
+	return dashboard.DashBoardData{
 		Paths:          ds.getPaths(),
 		CurrentPath:    path,
 		Requests:       requests,

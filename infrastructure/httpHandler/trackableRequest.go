@@ -9,11 +9,11 @@ import (
 	"time"
 )
 
-type Request struct {
+type TrackableRequest struct {
 	RequestService application.RequestService
 }
 
-func (rs Request) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (rs TrackableRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			fmt.Println(rec)

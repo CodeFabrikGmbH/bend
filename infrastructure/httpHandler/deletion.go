@@ -8,7 +8,7 @@ import (
 )
 
 type Deletion struct {
-	DeletionService application.DeletionService
+	RequestService application.RequestService
 }
 
 func (rs Deletion) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +22,7 @@ func (rs Deletion) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/delete")
 	requestId := getQueryValueOrNil(r.URL.Query(), "requestId")
 
-	err := rs.DeletionService.Delete(path, requestId)
+	err := rs.RequestService.Delete(path, requestId)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)

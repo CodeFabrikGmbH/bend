@@ -19,9 +19,9 @@ func main() {
 	}()
 
 	keycloakService := keycloak.New()
+	configService := application.ConfigService{Env: env}
 	requestService := application.RequestService{Env: env}
 	dashboardService := application.DashboardService{Env: env}
-	deletionService := application.DeletionService{Env: env}
 
 	http.Handle("/static/", http.FileServer(http.Dir("")))
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
@@ -31,11 +31,12 @@ func main() {
 	http.Handle("/readme/", httpHandler.ReadMePage{MarkdownFile: "README.md"})
 	http.Handle("/login", httpHandler.LoginPage{KeyCloakService: keycloakService})
 	http.Handle("/dashboard/", httpHandler.DashboardPage{KeyCloakService: keycloakService, DashboardService: dashboardService})
+	http.Handle("/config/", httpHandler.ConfigPage{KeyCloakService: keycloakService, ConfigService: configService})
 
-	http.Handle("/delete/", httpHandler.Deletion{DeletionService: deletionService})
+	http.Handle("/delete/", httpHandler.Deletion{RequestService: requestService})
 	http.Handle("/sendRequest/", httpHandler.SendRequest{SendRequestService: requestService})
 
-	http.Handle("/", httpHandler.Request{RequestService: requestService})
+	http.Handle("/", httpHandler.TrackableRequest{RequestService: requestService})
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {

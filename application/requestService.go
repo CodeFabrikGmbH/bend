@@ -10,6 +10,14 @@ type RequestService struct {
 	Env environment.Environment
 }
 
+func (rs RequestService) Delete(path string, requestId *string) error {
+	if requestId == nil {
+		return rs.Env.RequestRepository.DeletePath(path)
+	} else {
+		return rs.Env.RequestRepository.DeleteRequestForPath(path, *requestId)
+	}
+}
+
 func (rs RequestService) SendRequestToTarget(path, requestId, targetUrl string) request.Response {
 	req := rs.Env.RequestRepository.GetRequest(path, requestId)
 	return rs.Env.Transport.SendRequestToTarget(req, targetUrl)
