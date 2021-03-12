@@ -5,9 +5,8 @@ import (
 	"code-fabrik.com/bend/domain/environment"
 	"code-fabrik.com/bend/infrastructure/_http"
 	"code-fabrik.com/bend/infrastructure/boltDB"
-	"code-fabrik.com/bend/infrastructure/htmlTemplate"
+	"code-fabrik.com/bend/infrastructure/httpHandler"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
-	"code-fabrik.com/bend/infrastructure/markdown"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"net/http"
@@ -19,18 +18,24 @@ func main() {
 		_ = db.Close()
 	}()
 
-	http.Handle("/readme/", markdown.FileServer("README.md"))
+	keycloakService := keycloak.New()
+	requestService := application.RequestService{Env: env}
+	dashboardService := application.DashboardService{Env: env}
+	deletionService := application.DeletionService{Env: env}
+
 	http.Handle("/static/", http.FileServer(http.Dir("")))
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/favicon.ico")
 	})
 
-	http.Handle("/login", application.LoginPage{Env: env})
-	http.Handle("/dashboard/", application.DashboardPage{Env: env})
-	http.Handle("/delete/", application.DeletionService{Env: env})
-	http.Handle("/sendRequest/", application.SendRequestService{Env: env})
+	http.Handle("/readme/", httpHandler.ReadMePage{MarkdownFile: "README.md"})
+	http.Handle("/login", httpHandler.LoginPage{KeyCloakService: keycloakService})
+	http.Handle("/dashboard/", httpHandler.DashboardPage{KeyCloakService: keycloakService, DashboardService: dashboardService})
 
-	http.Handle("/", application.RequestService{Env: env})
+	http.Handle("/delete/", httpHandler.Deletion{DeletionService: deletionService})
+	http.Handle("/sendRequest/", httpHandler.SendRequest{SendRequestService: requestService})
+
+	http.Handle("/", httpHandler.Request{RequestService: requestService})
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -45,11 +50,8 @@ func createProductionEnvironment() (environment.Environment, *bolt.DB) {
 	}
 
 	return environment.Environment{
-		LoginPage:         htmlTemplate.LoginPagePresenter{},
-		DashboardPage:     htmlTemplate.DashBoardPage{},
 		RequestRepository: boltDB.RequestRepository{DB: db},
 		ConfigRepository:  boltDB.ConfigRepository{DB: db},
 		Transport:         _http.Transport{},
-		Authentication:    keycloak.New(),
 	}, db
 }

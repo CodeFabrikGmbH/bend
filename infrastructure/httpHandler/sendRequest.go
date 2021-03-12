@@ -1,18 +1,18 @@
-package application
+package httpHandler
 
 import (
-	"code-fabrik.com/bend/domain/environment"
+	"code-fabrik.com/bend/application"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 )
 
-type SendRequestService struct {
-	Env environment.Environment
+type SendRequest struct {
+	SendRequestService application.RequestService
 }
 
-func (rs SendRequestService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (rs SendRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			fmt.Println(rec)
@@ -36,8 +36,7 @@ func (rs SendRequestService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := rs.Env.RequestRepository.GetRequest(path, *requestId)
-	response := rs.Env.Transport.SendRequestToTarget(req, *targetUrl)
+	response := rs.SendRequestService.SendRequestToTarget(path, *requestId, *targetUrl)
 
 	marshal, _ := json.Marshal(response)
 	w.WriteHeader(http.StatusOK)
