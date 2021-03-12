@@ -11,6 +11,7 @@ type Request struct {
 	Header    map[string][]string `json:"header"`
 	Host      string              `json:"host"`
 	Uri       string              `json:"uri"`
+	Response  Response            `json:"response"`
 }
 
 func (r Request) ToJson() string {

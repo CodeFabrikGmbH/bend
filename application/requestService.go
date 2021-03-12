@@ -23,13 +23,40 @@ func (rs RequestService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	req := createRequestObject(r)
-	err := rs.Env.RequestRepository.Save(req)
+	req.Response = rs.getOrCreateResponse(req)
+
+	err := rs.Env.RequestRepository.Add(req)
 	if err != nil {
 		panic(err)
 	}
 
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
+	writeResponse(w, req.Response)
+}
+
+func writeResponse(w http.ResponseWriter, response request.Response) {
+	w.WriteHeader(response.ResponseStatusCode)
+	w.Write([]byte(response.ResponseBody))
+}
+
+func (rs RequestService) getOrCreateResponse(req request.Request) request.Response {
+	config := rs.Env.ConfigRepository.Find(req.Path)
+
+	if config == nil {
+		return request.Response{
+			Target:             "no target - mocked response",
+			ResponseStatusCode: http.StatusOK,
+			ResponseBody:       "ok",
+		}
+	}
+	if len(config.Target) != 0 {
+		return rs.Env.Transport.SendRequestToTarget(req, config.Target)
+	}
+
+	return request.Response{
+		Target:             "no target - mocked response",
+		ResponseStatusCode: config.Response.StatusCode,
+		ResponseBody:       config.Response.Body,
+	}
 }
 
 func createRequestObject(r *http.Request) request.Request {

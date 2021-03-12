@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -13,14 +14,41 @@ type Transport struct {
 	client *http.Client
 }
 
+func addRequestParametersToTargetUrl(requestUri, targetUri string) (string, error) {
+	requestURL, err := url.Parse(requestUri)
+	if err != nil {
+		return "", err
+	}
+	targetURL, err := url.Parse(targetUri)
+	if err != nil {
+		return "", err
+	}
+
+	q := targetURL.Query()
+
+	for k, vl := range requestURL.Query() {
+		if q[k] == nil {
+			//only add if target url does not already specify the parameter key
+			for _, v := range vl {
+				q.Add(k, v)
+			}
+		}
+	}
+	targetURL.RawQuery = q.Encode()
+	return targetURL.String(), nil
+
+}
+
 func (t Transport) SendRequestToTarget(rr request.Request, targetUrl string) request.Response {
 	if t.client == nil {
 		t.client = createHttpClient()
 	}
 
+	finalUrl, err := addRequestParametersToTargetUrl(rr.Uri, targetUrl)
+
 	result := request.Response{}
 
-	req, err := http.NewRequest(rr.Method, targetUrl, bytes.NewBuffer([]byte(rr.Body)))
+	req, err := http.NewRequest(rr.Method, finalUrl, bytes.NewBuffer([]byte(rr.Body)))
 
 	if err != nil {
 		result.Error = err.Error()

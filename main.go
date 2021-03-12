@@ -9,13 +9,14 @@ import (
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"code-fabrik.com/bend/infrastructure/markdown"
 	"fmt"
+	"github.com/boltdb/bolt"
 	"net/http"
 )
 
 func main() {
-	env := createProductionEnvironment()
+	env, db := createProductionEnvironment()
 	defer func() {
-		env.Close()
+		_ = db.Close()
 	}()
 
 	http.Handle("/readme/", markdown.FileServer("README.md"))
@@ -37,12 +38,18 @@ func main() {
 	}
 }
 
-func createProductionEnvironment() environment.Environment {
+func createProductionEnvironment() (environment.Environment, *bolt.DB) {
+	db, err := bolt.Open("db/my.db", 0600, nil)
+	if err != nil {
+		panic(err)
+	}
+
 	return environment.Environment{
-		LoginPage:         htmlTemplate.LoginPage{},
+		LoginPage:         htmlTemplate.LoginPagePresenter{},
 		DashboardPage:     htmlTemplate.DashBoardPage{},
-		RequestRepository: boltDB.CreateRequestRepository(),
+		RequestRepository: boltDB.RequestRepository{DB: db},
+		ConfigRepository:  boltDB.ConfigRepository{DB: db},
 		Transport:         _http.Transport{},
 		Authentication:    keycloak.New(),
-	}
+	}, db
 }

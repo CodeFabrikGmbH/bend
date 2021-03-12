@@ -24,6 +24,7 @@ type RequestDetails struct {
 	Header    map[string][]string `json:"header"`
 	Host      string              `json:"host"`
 	Uri       string              `json:"uri"`
+	Response  request.Response    `json:"response"`
 }
 
 type DashBoard struct {
@@ -50,5 +51,6 @@ func CreateRequestDetails(request request.Request) RequestDetails {
 		Header:    request.Header,
 		Host:      request.Host,
 		Uri:       request.Uri,
+		Response:  request.Response,
 	}
 }
