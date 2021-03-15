@@ -8,10 +8,15 @@ The requests can be observed at the dashboard page and can be sent to other targ
 # Usage
 The dashboard is available in the `/dashboard` path.
 
+The configuration is available in the `/config` path.
+
+
 # Unusable paths
 Some endpoints are not available for tracking as they are in use for internal purposes. These are:
 
 * /dashboard
+
+* /config
   
 * /static
 

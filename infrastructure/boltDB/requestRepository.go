@@ -143,6 +143,7 @@ func (rr RequestRepository) DeletePath(path string) error {
 
 	})
 }
+
 func (rr RequestRepository) DeleteRequestForPath(path string, id string) error {
 	db := rr.DB
 

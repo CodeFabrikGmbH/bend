@@ -46,7 +46,10 @@ func (t Transport) SendRequestToTarget(rr request.Request, targetUrl string) req
 
 	finalUrl, err := addRequestParametersToTargetUrl(rr.Uri, targetUrl)
 
-	result := request.Response{}
+	result := request.Response{
+		Target:             finalUrl,
+		ResponseStatusCode: -1,
+	}
 
 	req, err := http.NewRequest(rr.Method, finalUrl, bytes.NewBuffer([]byte(rr.Body)))
 
