@@ -1,4 +1,4 @@
-package dashboardpage
+package dashboard
 
 import (
 	"code-fabrik.com/bend/domain/request"
@@ -24,9 +24,10 @@ type RequestDetails struct {
 	Header    map[string][]string `json:"header"`
 	Host      string              `json:"host"`
 	Uri       string              `json:"uri"`
+	Response  request.Response    `json:"response"`
 }
 
-type DashBoard struct {
+type DashBoardData struct {
 	Paths          []Path
 	CurrentPath    string
 	Requests       []Request
@@ -50,5 +51,6 @@ func CreateRequestDetails(request request.Request) RequestDetails {
 		Header:    request.Header,
 		Host:      request.Host,
 		Uri:       request.Uri,
+		Response:  request.Response,
 	}
 }

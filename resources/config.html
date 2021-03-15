@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta charset="utf-8"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css"/>
+    <title></title>
+    <script>
+        function openPath(path) {
+            window.location = "/config/" + path;
+        }
+
+
+        function deletePath(path) {
+            let r = confirm("Delete this configuration?");
+            if (r === true) {
+                let sendUrl = "/config/" + path;
+
+                let xmlHttp = new XMLHttpRequest();
+                xmlHttp.onreadystatechange = function () {
+                    if (xmlHttp.readyState === XMLHttpRequest.DONE) {
+                        if (xmlHttp.status === 200) {
+                            window.location.reload();
+                        } else {
+                            window.alert(xmlHttp.responseText);
+                        }
+                    }
+                }
+                xmlHttp.open("DELETE", sendUrl, true); // true for asynchronous
+                xmlHttp.send(null);
+            }
+        }
+
+        function save() {
+            let path = document.getElementById("path").value.replace(/^\/+/g, '');
+            let statuscode = document.getElementById("statuscode").value;
+            let target = document.getElementById("target").value;
+            let body = document.getElementById("body").value;
+            let originalPath = "{{ .CurrentConfig.Path }}".replace(/^\/+/g, '');
+            let data = JSON.stringify({ originalPath: originalPath, path: path, statuscode: statuscode, target: target, body: body });
+
+            let xmlHttp = new XMLHttpRequest();
+
+            xmlHttp.onreadystatechange = function () {
+                if (xmlHttp.readyState === XMLHttpRequest.DONE) {
+                    if (xmlHttp.status === 200) {
+                        window.location = "/config/" + path;
+                    } else {
+                        window.alert(xmlHttp.responseText);
+                    }
+                }
+            }
+
+            let sendUrl = "/config/" + path;
+            xmlHttp.open("PUT", sendUrl, true); // true for asynchronous
+            xmlHttp.send(data);
+        }
+
+        function init() {
+            let openReadme = document.getElementById("openReadme");
+            openReadme.onclick = () => {
+                window.open('/readme');
+            };
+        }
+
+        window.onload = init;
+    </script>
+</head>
+
+<body>
+<div class="page-header">
+    <p class="page-header-title">Bend</p>
+    <button id="openReadme">?</button>
+</div>
+
+<div style="width: 100%">
+    <table class="table-style">
+        <tr>
+            <th>Path</th>
+            <th onclick="openPath()">+</th>
+        </tr>
+        {{ with .Configs }}
+        {{ range . }}
+        <tr>
+            <td onclick="openPath({{.Path}})">{{.Path}}</td>
+            <td onclick="deletePath({{.Path}})"><i class="gg-trash"></i></td>
+        </tr>
+        {{ end }}
+        {{ end }}
+    </table>
+
+    <div class="table-style" style="width: 100%">
+        <table class="request-details-style">
+            {{ with .CurrentConfig }}
+                <tr>
+                    <td>Path</td>
+                    <td>
+                        <input style="width: 100%" type="text" id="path" value="{{.Path}}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Target</td>
+                    <td>
+                        <input style="width: 100%" type="text" id="target" value="{{.Target}}">
+                        When this is empty the default values below are returned automatically for incoming requests.
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>Default StatusCode</td>
+                    <td>
+                        <input style="width: 100%" type="text" id="statuscode" value="{{.Response.StatusCode}}">
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>Default Body</td>
+                    <td>
+                        <textarea style="width: 100%; height: 200px;" type="text" id="body">{{.Response.Body}}</textarea>
+                    </td>
+                </tr>
+            {{ end }}
+        </table>
+        <button class="button" style="width: 200px;" onclick="save()">Save</button>
+    </div>
+</div>
+
+
+</body>

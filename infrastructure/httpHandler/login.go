@@ -1,16 +1,17 @@
-package application
+package httpHandler
 
 import (
 	"code-fabrik.com/bend/domain/authentication"
-	"code-fabrik.com/bend/domain/environment"
 	"code-fabrik.com/bend/domain/loginpage"
+	"code-fabrik.com/bend/infrastructure/htmlTemplate"
+	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"context"
 	"fmt"
 	"net/http"
 )
 
 type LoginPage struct {
-	Env environment.Environment
+	KeyCloakService *keycloak.Service
 }
 
 func (lp LoginPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +20,6 @@ func (lp LoginPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(rec)
 		}
 	}()
-
 	ctx := context.Background()
 
 	if lp.isLogoutRequest(r) {
@@ -30,8 +30,9 @@ func (lp LoginPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		origin := query.Get("origin")
 
-		user, _ := lp.Env.Authentication.Authenticate(w, r)
-		lp.Env.LoginPage.Present(w, createLoginData(user, origin, ""))
+		user, _ := lp.KeyCloakService.Authenticate(w, r)
+
+		htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginData(user, origin, ""))
 	}
 }
 
@@ -41,19 +42,18 @@ func (lp LoginPage) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 	password := query.Get("password")
 	origin := query.Get("origin")
 
-	user, err := lp.Env.Authentication.Login(ctx, w, username, password)
+	user, err := lp.KeyCloakService.Login(ctx, w, username, password)
 	errorString := ""
 	if err != nil {
 		errorString = "bad credentials"
 	}
 
-	lp.Env.LoginPage.Present(w, createLoginData(user, origin, errorString))
+	htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginData(user, origin, errorString))
 }
 
 func (lp LoginPage) logout(ctx context.Context, w http.ResponseWriter) {
-	lp.Env.Authentication.Logout(ctx, w)
-
-	lp.Env.LoginPage.Present(w, createLoginData(nil, "", ""))
+	lp.KeyCloakService.Logout(ctx, w)
+	htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginData(nil, "", ""))
 }
 
 func (lp LoginPage) isLogoutRequest(r *http.Request) bool {

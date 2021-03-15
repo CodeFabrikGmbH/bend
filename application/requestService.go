@@ -3,52 +3,54 @@ package application
 import (
 	"code-fabrik.com/bend/domain/environment"
 	"code-fabrik.com/bend/domain/request"
-	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
-	"time"
 )
 
 type RequestService struct {
 	Env environment.Environment
 }
 
-func (rs RequestService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			fmt.Println(rec)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}()
+func (rs RequestService) Delete(path string, requestId *string) error {
+	if requestId == nil {
+		return rs.Env.RequestRepository.DeletePath(path)
+	} else {
+		return rs.Env.RequestRepository.DeleteRequestForPath(path, *requestId)
+	}
+}
 
-	req := createRequestObject(r)
-	err := rs.Env.RequestRepository.Save(req)
+func (rs RequestService) SendRequestToTarget(path, requestId, targetUrl string) request.Response {
+	req := rs.Env.RequestRepository.GetRequest(path, requestId)
+	return rs.Env.Transport.SendRequestToTarget(req, targetUrl)
+}
+
+func (rs RequestService) HandleTrackableRequest(req request.Request) request.Response {
+	req.Response = rs.getOrCreateResponse(req)
+	err := rs.Env.RequestRepository.Add(req)
+
 	if err != nil {
-		panic(err)
+		req.Response.Error = err.Error()
 	}
 
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
+	return req.Response
 }
 
-func createRequestObject(r *http.Request) request.Request {
-	body, _ := readBody(r.Body)
+func (rs RequestService) getOrCreateResponse(req request.Request) request.Response {
+	config := rs.Env.ConfigRepository.Find(req.Path)
 
-	return request.Request{
-		Timestamp: time.Now().UnixNano(),
-		Path:      r.URL.Path,
-		Method:    r.Method,
-		Body:      string(body),
-		Header:    r.Header,
-		Host:      r.Host,
-		Uri:       r.RequestURI,
+	if config == nil {
+		return request.Response{
+			Target:             "no target - mocked response",
+			ResponseStatusCode: http.StatusOK,
+			ResponseBody:       "ok",
+		}
 	}
-}
+	if len(config.Target) != 0 {
+		return rs.Env.Transport.SendRequestToTarget(req, config.Target)
+	}
 
-func readBody(ioBody io.ReadCloser) ([]byte, error) {
-	defer func() {
-		_ = ioBody.Close()
-	}()
-	return ioutil.ReadAll(ioBody)
+	return request.Response{
+		Target:             "no target - mocked response",
+		ResponseStatusCode: config.Response.StatusCode,
+		ResponseBody:       config.Response.Body,
+	}
 }

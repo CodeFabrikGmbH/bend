@@ -5,31 +5,38 @@ import (
 	"code-fabrik.com/bend/domain/environment"
 	"code-fabrik.com/bend/infrastructure/_http"
 	"code-fabrik.com/bend/infrastructure/boltDB"
-	"code-fabrik.com/bend/infrastructure/htmlTemplate"
+	"code-fabrik.com/bend/infrastructure/httpHandler"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
-	"code-fabrik.com/bend/infrastructure/markdown"
 	"fmt"
+	"github.com/boltdb/bolt"
 	"net/http"
 )
 
 func main() {
-	env := createProductionEnvironment()
+	env, db := createProductionEnvironment()
 	defer func() {
-		env.Close()
+		_ = db.Close()
 	}()
 
-	http.Handle("/readme/", markdown.FileServer("README.md"))
+	keycloakService := keycloak.New()
+	configService := application.ConfigService{Env: env}
+	requestService := application.RequestService{Env: env}
+	dashboardService := application.DashboardService{Env: env}
+
 	http.Handle("/static/", http.FileServer(http.Dir("")))
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/favicon.ico")
 	})
 
-	http.Handle("/login", application.LoginPage{Env: env})
-	http.Handle("/dashboard/", application.DashboardPage{Env: env})
-	http.Handle("/delete/", application.DeletionService{Env: env})
-	http.Handle("/sendRequest/", application.SendRequestService{Env: env})
+	http.Handle("/readme/", httpHandler.ReadMePage{MarkdownFile: "README.md"})
+	http.Handle("/login", httpHandler.LoginPage{KeyCloakService: keycloakService})
+	http.Handle("/dashboard/", httpHandler.DashboardPage{KeyCloakService: keycloakService, DashboardService: dashboardService})
+	http.Handle("/config/", httpHandler.ConfigPage{KeyCloakService: keycloakService, ConfigService: configService})
 
-	http.Handle("/", application.RequestService{Env: env})
+	http.Handle("/delete/", httpHandler.Deletion{RequestService: requestService})
+	http.Handle("/sendRequest/", httpHandler.SendRequest{SendRequestService: requestService})
+
+	http.Handle("/", httpHandler.TrackableRequest{RequestService: requestService})
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -37,12 +44,15 @@ func main() {
 	}
 }
 
-func createProductionEnvironment() environment.Environment {
-	return environment.Environment{
-		LoginPage:         htmlTemplate.LoginPage{},
-		DashboardPage:     htmlTemplate.DashBoardPage{},
-		RequestRepository: boltDB.CreateRequestRepository(),
-		Transport:         _http.Transport{},
-		Authentication:    keycloak.New(),
+func createProductionEnvironment() (environment.Environment, *bolt.DB) {
+	db, err := bolt.Open("db/my.db", 0600, nil)
+	if err != nil {
+		panic(err)
 	}
+
+	return environment.Environment{
+		RequestRepository: boltDB.RequestRepository{DB: db},
+		ConfigRepository:  boltDB.ConfigRepository{DB: db},
+		Transport:         _http.Transport{},
+	}, db
 }
