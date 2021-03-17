@@ -1,4 +1,4 @@
-package _http
+package http
 
 import (
 	"bytes"

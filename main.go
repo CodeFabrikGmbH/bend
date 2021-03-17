@@ -3,8 +3,8 @@ package main
 import (
 	"code-fabrik.com/bend/application"
 	"code-fabrik.com/bend/domain/environment"
-	"code-fabrik.com/bend/infrastructure/_http"
 	"code-fabrik.com/bend/infrastructure/boltDB"
+	httptransport "code-fabrik.com/bend/infrastructure/http"
 	"code-fabrik.com/bend/infrastructure/httpHandler"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"fmt"
@@ -53,6 +53,6 @@ func createProductionEnvironment() (environment.Environment, *bolt.DB) {
 	return environment.Environment{
 		RequestRepository: boltDB.RequestRepository{DB: db},
 		ConfigRepository:  boltDB.ConfigRepository{DB: db},
-		Transport:         _http.Transport{},
+		Transport:         httptransport.Transport{},
 	}, db
 }
