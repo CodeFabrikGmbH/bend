@@ -60,10 +60,10 @@ type DashboardService struct {
 	RequestRepository request.Repository
 }
 
-func (ds DashboardService) GenerateDashboardViewData(path string, requestId *string) DashBoardViewData {
+func (ds DashboardService) GenerateDashboardViewData(path string, requestId string) DashBoardViewData {
 	requests := ds.getRequests(path)
-	if requestId == nil && len(requests) > 0 {
-		requestId = &requests[0].ID
+	if len(requestId) == 0 && len(requests) > 0 {
+		requestId = requests[0].ID
 	}
 
 	return DashBoardViewData{
@@ -107,11 +107,11 @@ func (ds DashboardService) getRequests(path string) []RequestAbstract {
 	return dashboardRequests
 }
 
-func (ds DashboardService) getRequestDetails(path string, id *string) RequestDetails {
-	if id == nil {
+func (ds DashboardService) getRequestDetails(path string, id string) RequestDetails {
+	if len(id) == 0 {
 		return RequestDetails{}
 	}
 
-	req := ds.RequestRepository.GetRequest(path, *id)
+	req := ds.RequestRepository.GetRequest(path, id)
 	return CreateRequestDetails(req)
 }

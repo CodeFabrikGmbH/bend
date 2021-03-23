@@ -3,7 +3,6 @@ package application
 import (
 	"code-fabrik.com/bend/domain/config"
 	"code-fabrik.com/bend/domain/request"
-	"net/http"
 )
 
 type RequestService struct {
@@ -12,12 +11,14 @@ type RequestService struct {
 	Transport         request.Transport
 }
 
-func (rs RequestService) Delete(path string, requestId *string) error {
-	if requestId == nil {
-		return rs.RequestRepository.DeletePath(path)
-	} else {
-		return rs.RequestRepository.DeleteRequestForPath(path, *requestId)
-	}
+const defaultStatusCode = 200
+
+func (rs RequestService) DeleteAllRequestsForPath(path string) error {
+	return rs.RequestRepository.DeletePath(path)
+}
+
+func (rs RequestService) DeleteRequest(path string, requestId string) error {
+	return rs.RequestRepository.DeleteRequestForPath(path, requestId)
 }
 
 func (rs RequestService) SendRequestToTarget(path, requestId, targetUrl string) request.Response {
@@ -25,7 +26,7 @@ func (rs RequestService) SendRequestToTarget(path, requestId, targetUrl string) 
 	return rs.Transport.SendRequestToTarget(req, targetUrl)
 }
 
-func (rs RequestService) HandleTrackableRequest(req request.Request) request.Response {
+func (rs RequestService) TrackRequest(req request.Request) request.Response {
 	req.Response = rs.getOrCreateResponse(req)
 	err := rs.RequestRepository.Add(req)
 
@@ -42,7 +43,7 @@ func (rs RequestService) getOrCreateResponse(req request.Request) request.Respon
 	if config == nil {
 		return request.Response{
 			Target:             "no target - mocked response",
-			ResponseStatusCode: http.StatusOK,
+			ResponseStatusCode: defaultStatusCode,
 			ResponseBody:       "ok",
 		}
 	}

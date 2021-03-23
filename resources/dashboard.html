@@ -6,19 +6,22 @@
     <link rel="stylesheet" type="text/css" href="/static/css/styles.css"/>
     <title></title>
     <script>
+        let API_URL = "/api/requests";
+        let PAGE_URL = "/dashboard/";
+
         function openPath(path) {
-            window.location = "/dashboard/" + path;
+            window.location = PAGE_URL + path + "/";
         }
 
         function openRequest() {
             let requestId = document.getElementById("requestId").value;
-            window.location = "/dashboard/" + {{ .CurrentPath }} + "?requestId=" + requestId;
+            window.location = PAGE_URL + {{ .CurrentPath }} + "/" + requestId;
         }
 
         function deletePath(path) {
             let r = confirm("Delete all requests for path?");
             if (r === true) {
-                let sendUrl = "/delete/" + path;
+                let sendUrl = API_URL + path + "/*";
 
                 var xmlHttp = new XMLHttpRequest();
                 xmlHttp.onreadystatechange = function () {
@@ -26,7 +29,7 @@
                         window.location.reload();
                     }
                 }
-                xmlHttp.open("GET", sendUrl, true); // true for asynchronous
+                xmlHttp.open("DELETE", sendUrl, true); // true for asynchronous
                 xmlHttp.send(null);
             }
         }
@@ -35,33 +38,40 @@
             let r = confirm("Delete this request?");
             if (r === true) {
                 let requestId = document.getElementById("requestId").value;
-                let sendUrl = "/delete/" + {{ .CurrentPath }} + "?requestId=" + requestId;
+                let sendUrl = API_URL + {{ .CurrentPath }} + "/" + requestId;
 
                 var xmlHttp = new XMLHttpRequest();
                 xmlHttp.onreadystatechange = function () {
                     if (xmlHttp.readyState === XMLHttpRequest.DONE) {
-                        window.location.reload();
+                        openPath({{ .CurrentPath }});
                     }
                 }
-                xmlHttp.open("GET", sendUrl, true); // true for asynchronous
+                xmlHttp.open("DELETE", sendUrl, true); // true for asynchronous
                 xmlHttp.send(null);
             }
         }
 
         function sendRequest() {
             let requestId = document.getElementById("requestId").value;
-            let target = encodeURIComponent(document.getElementById("requestTargetUrl").value)
-            let sendUrl = "/sendRequest/" + {{ .CurrentPath }} + "?requestId=" + requestId + "&targetUrl=" + target;
+            let target = document.getElementById("requestTargetUrl").value;
+
+            let sendUrl = API_URL + {{ .CurrentPath }} + "/" + requestId;
+
+            let sendRequestBody = JSON.stringify({
+                "targetUrl": target
+            });
 
             var xmlHttp = new XMLHttpRequest();
+
             xmlHttp.onreadystatechange = function () {
                 if (xmlHttp.readyState === XMLHttpRequest.DONE) {
                     window.alert(xmlHttp.responseText);
                     hideModal();
                 }
             }
-            xmlHttp.open("GET", sendUrl, true); // true for asynchronous
-            xmlHttp.send(null);
+            xmlHttp.open("POST", sendUrl, true); // true for asynchronous
+            xmlHttp.setRequestHeader('Content-Type', 'application/json');
+            xmlHttp.send(sendRequestBody);
         }
 
         function hideModal() {

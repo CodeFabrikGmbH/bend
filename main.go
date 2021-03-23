@@ -42,12 +42,12 @@ func main() {
 	http.Handle("/readme/", httpHandler.ReadMePage{MarkdownFile: "README.md"})
 	http.Handle("/login", httpHandler.LoginPage{KeyCloakService: keycloakService})
 	http.Handle("/dashboard/", httpHandler.DashboardPage{KeyCloakService: keycloakService, DashboardService: dashboardService})
-	http.Handle("/config/", httpHandler.ConfigPage{KeyCloakService: keycloakService, ConfigService: configService})
+	http.Handle("/configs/", httpHandler.ConfigPage{KeyCloakService: keycloakService, ConfigService: configService})
 
-	http.Handle("/delete/", httpHandler.Deletion{RequestService: requestService})
-	http.Handle("/sendRequest/", httpHandler.SendRequest{SendRequestService: requestService})
+	http.Handle("/api/configs/", httpHandler.ConfigAPI{KeyCloakService: keycloakService, ConfigService: configService})
+	http.Handle("/api/requests/", httpHandler.RequestAPI{RequestService: requestService})
 
-	http.Handle("/", httpHandler.TrackableRequest{RequestService: requestService})
+	http.Handle("/", httpHandler.TrackRequest{RequestService: requestService})
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {

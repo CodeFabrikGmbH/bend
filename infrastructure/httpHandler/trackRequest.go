@@ -9,11 +9,11 @@ import (
 	"time"
 )
 
-type TrackableRequest struct {
+type TrackRequest struct {
 	RequestService application.RequestService
 }
 
-func (rs TrackableRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (rs TrackRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			fmt.Println(rec)
@@ -36,8 +36,12 @@ func (rs TrackableRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Uri:       r.RequestURI,
 	}
 
-	response := rs.RequestService.HandleTrackableRequest(req)
+	if req.Path == "/" {
+		writeResponse(w, "", fmt.Errorf("root is not server"))
+	} else {
+		response := rs.RequestService.TrackRequest(req)
 
-	w.WriteHeader(response.ResponseStatusCode)
-	w.Write([]byte(response.ResponseBody))
+		w.WriteHeader(response.ResponseStatusCode)
+		_, _ = w.Write([]byte(response.ResponseBody))
+	}
 }
