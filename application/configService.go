@@ -2,16 +2,15 @@ package application
 
 import (
 	"code-fabrik.com/bend/domain/config"
-	"code-fabrik.com/bend/domain/environment"
 	"sort"
 )
 
 type ConfigService struct {
-	Env environment.Environment
+	ConfigRepository config.Repository
 }
 
 func (cs ConfigService) GetConfigData(path string) config.ConfigData {
-	configs := cs.Env.ConfigRepository.FindAll()
+	configs := cs.ConfigRepository.FindAll()
 	sort.SliceStable(configs, func(i, j int) bool {
 		return configs[i].Path > configs[j].Path
 	})
@@ -23,7 +22,7 @@ func (cs ConfigService) GetConfigData(path string) config.ConfigData {
 }
 
 func (cs ConfigService) getCurrentConfig(path string) config.Config {
-	configData := cs.Env.ConfigRepository.Find(path)
+	configData := cs.ConfigRepository.Find(path)
 	if configData != nil {
 		return *configData
 	}
@@ -38,9 +37,9 @@ func (cs ConfigService) getCurrentConfig(path string) config.Config {
 }
 
 func (cs ConfigService) Delete(path string) error {
-	return cs.Env.ConfigRepository.Delete(path)
+	return cs.ConfigRepository.Delete(path)
 }
 
 func (cs ConfigService) Save(config config.Config) error {
-	return cs.Env.ConfigRepository.Save(config)
+	return cs.ConfigRepository.Save(config)
 }

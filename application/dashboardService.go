@@ -2,12 +2,12 @@ package application
 
 import (
 	"code-fabrik.com/bend/domain/dashboard"
-	"code-fabrik.com/bend/domain/environment"
+	"code-fabrik.com/bend/domain/request"
 	"sort"
 )
 
 type DashboardService struct {
-	Env environment.Environment
+	RequestRepository request.Repository
 }
 
 func (ds DashboardService) GetDashboardData(path string, requestId *string) dashboard.DashBoardData {
@@ -27,9 +27,9 @@ func (ds DashboardService) GetDashboardData(path string, requestId *string) dash
 func (ds DashboardService) getPaths() []dashboard.Path {
 	var requestPaths []dashboard.Path
 
-	paths := ds.Env.RequestRepository.GetPaths()
+	paths := ds.RequestRepository.GetPaths()
 	for _, p := range paths {
-		count := ds.Env.RequestRepository.GetRequestCountForPath(p)
+		count := ds.RequestRepository.GetRequestCountForPath(p)
 
 		requestPaths = append(requestPaths, dashboard.Path{
 			Path:  p,
@@ -45,7 +45,7 @@ func (ds DashboardService) getPaths() []dashboard.Path {
 }
 
 func (ds DashboardService) getRequests(path string) []dashboard.Request {
-	requests := ds.Env.RequestRepository.GetRequestsForPath(path)
+	requests := ds.RequestRepository.GetRequestsForPath(path)
 	sort.SliceStable(requests, func(i, j int) bool {
 		return requests[i].Timestamp > requests[j].Timestamp
 	})
@@ -62,6 +62,6 @@ func (ds DashboardService) getRequestDetails(path string, id *string) dashboard.
 		return dashboard.RequestDetails{}
 	}
 
-	req := ds.Env.RequestRepository.GetRequest(path, *id)
+	req := ds.RequestRepository.GetRequest(path, *id)
 	return dashboard.CreateRequestDetails(req)
 }
