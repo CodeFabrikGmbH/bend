@@ -2,13 +2,18 @@ package httpHandler
 
 import (
 	"code-fabrik.com/bend/domain/authentication"
-	"code-fabrik.com/bend/domain/loginpage"
 	"code-fabrik.com/bend/infrastructure/htmlTemplate"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"context"
 	"fmt"
 	"net/http"
 )
+
+type LoginViewData struct {
+	Name   string
+	Origin string
+	Error  string
+}
 
 type LoginPage struct {
 	KeyCloakService *keycloak.Service
@@ -32,7 +37,7 @@ func (lp LoginPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		user, _ := lp.KeyCloakService.Authenticate(w, r)
 
-		htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginData(user, origin, ""))
+		htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginViewData(user, origin, ""))
 	}
 }
 
@@ -48,12 +53,12 @@ func (lp LoginPage) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 		errorString = "bad credentials"
 	}
 
-	htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginData(user, origin, errorString))
+	htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginViewData(user, origin, errorString))
 }
 
 func (lp LoginPage) logout(ctx context.Context, w http.ResponseWriter) {
 	lp.KeyCloakService.Logout(ctx, w)
-	htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginData(nil, "", ""))
+	htmlTemplate.PresentHtmlTemplate(w, "resources/login.html", createLoginViewData(nil, "", ""))
 }
 
 func (lp LoginPage) isLogoutRequest(r *http.Request) bool {
@@ -70,12 +75,12 @@ func (lp LoginPage) isLoginRequest(r *http.Request) bool {
 	return len(username) != 0 && len(password) != 0
 }
 
-func createLoginData(userInfo *authentication.User, origin string, err string) loginpage.Login {
+func createLoginViewData(userInfo *authentication.User, origin string, err string) LoginViewData {
 	name := ""
 	if userInfo != nil {
 		name = userInfo.GivenName + " " + userInfo.FamilyName
 	}
-	return loginpage.Login{
+	return LoginViewData{
 		Name:   name,
 		Origin: origin,
 		Error:  err,
