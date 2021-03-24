@@ -28,8 +28,10 @@ func (dp DashboardPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	path := strings.TrimPrefix(r.URL.Path, "/dashboard")
-	requestId := getQueryValueOrNil(r.URL.Query(), "requestId")
 
-	dashBoardData := dp.DashboardService.GetDashboardData(path, requestId)
+	requestPath, requestId := getRequestPathAndId(path)
+
+	dashBoardData := dp.DashboardService.GenerateDashboardViewData(requestPath, requestId)
+
 	htmlTemplate.PresentHtmlTemplate(w, "resources/dashboard.html", dashBoardData)
 }

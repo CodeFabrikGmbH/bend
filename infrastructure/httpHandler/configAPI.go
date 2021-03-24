@@ -3,7 +3,6 @@ package httpHandler
 import (
 	"code-fabrik.com/bend/application"
 	"code-fabrik.com/bend/domain/config"
-	"code-fabrik.com/bend/infrastructure/htmlTemplate"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"encoding/json"
 	"fmt"
@@ -13,20 +12,12 @@ import (
 	"strings"
 )
 
-type ConfigPage struct {
+type ConfigAPI struct {
 	KeyCloakService *keycloak.Service
 	ConfigService   application.ConfigService
 }
 
-type ConfigInput struct {
-	OriginalPath string `json:"originalPath"`
-	Path         string `json:"path"`
-	Target       string `json:"target"`
-	StatusCode   string `json:"statusCode"`
-	Body         string `json:"body"`
-}
-
-func (cp ConfigPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (cp ConfigAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			fmt.Println(rec)
@@ -39,13 +30,9 @@ func (cp ConfigPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := strings.TrimPrefix(r.URL.Path, "/config")
+	path := strings.TrimPrefix(r.URL.Path, "/api/configs")
 
 	switch r.Method {
-	case http.MethodGet:
-		configData := cp.ConfigService.GetConfigData(path)
-		htmlTemplate.PresentHtmlTemplate(w, "resources/config.html", configData)
-
 	case http.MethodPut:
 		defer func() {
 			_ = r.Body.Close()
@@ -55,33 +42,23 @@ func (cp ConfigPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		configInput := ConfigInput{}
 		err := json.Unmarshal(body, &configInput)
 		if err != nil {
-			cp.writeResponse(w, err)
+			writeResponse(w, "", err)
 		} else {
 			config, err := createConfigFromInput(configInput)
 			if err != nil {
-				cp.writeResponse(w, err)
+				writeResponse(w, "", err)
 			} else {
 				if len(configInput.OriginalPath) != 0 {
 					_ = cp.ConfigService.Delete(configInput.OriginalPath)
 				}
 
 				cp.ConfigService.Save(config)
-				cp.writeResponse(w, err)
+				writeResponse(w, "ok", err)
 			}
 		}
 	case http.MethodDelete:
 		err := cp.ConfigService.Delete(path)
-		cp.writeResponse(w, err)
-	}
-}
-
-func (cp ConfigPage) writeResponse(w http.ResponseWriter, err error) {
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(err.Error()))
-	} else {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
+		writeResponse(w, "ok", err)
 	}
 }
 

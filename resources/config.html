@@ -6,15 +6,18 @@
     <link rel="stylesheet" type="text/css" href="/static/css/styles.css"/>
     <title></title>
     <script>
+        let API_URL = "/api/configs/";
+        let PAGE_URL = "/configs/";
+
         function openPath(path) {
-            window.location = "/config/" + path;
+            window.location = PAGE_URL + path;
         }
 
 
         function deletePath(path) {
             let r = confirm("Delete this configuration?");
             if (r === true) {
-                let sendUrl = "/config/" + path;
+                let sendUrl = API_URL + path;
 
                 let xmlHttp = new XMLHttpRequest();
                 xmlHttp.onreadystatechange = function () {
@@ -44,14 +47,14 @@
             xmlHttp.onreadystatechange = function () {
                 if (xmlHttp.readyState === XMLHttpRequest.DONE) {
                     if (xmlHttp.status === 200) {
-                        window.location = "/config/" + path;
+                        window.location = PAGE_URL + path;
                     } else {
                         window.alert(xmlHttp.responseText);
                     }
                 }
             }
 
-            let sendUrl = "/config/" + path;
+            let sendUrl = API_URL + path;
             xmlHttp.open("PUT", sendUrl, true); // true for asynchronous
             xmlHttp.send(data);
         }
