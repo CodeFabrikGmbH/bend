@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type SendRequestBody struct {
+type SendRequestInput struct {
 	TargetUrl string `json:"targetUrl"`
 }
 
@@ -35,7 +35,7 @@ func (rs RequestAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		body, err := readRequestBody(r)
 		if err == nil {
-			requestBody := SendRequestBody{}
+			requestBody := SendRequestInput{}
 			err = json.Unmarshal(body, &requestBody)
 
 			if err == nil {
@@ -59,6 +59,9 @@ func (rs RequestAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func getRequestPathAndId(path string) (requestPath string, requestId string) {
 	i := strings.LastIndex(path, "/")
+	if i == -1 {
+		return
+	}
 
 	requestPath = path[0:i]
 	requestId = path[i+1:]
