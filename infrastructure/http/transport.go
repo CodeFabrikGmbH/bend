@@ -60,6 +60,11 @@ func (t Transport) SendRequestToTarget(rr request.Request, targetUrl string) req
 
 	for k, vl := range rr.Header {
 		for _, v := range vl {
+			// If accept encoding is not explicitly set,
+			// the compression will be handled handled automatically by transport
+			if k == "Accept-Encoding" {
+				continue
+			}
 			req.Header.Add(k, v)
 		}
 	}
