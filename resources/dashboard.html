@@ -148,8 +148,8 @@
             <button class="button" style="width: 200px;" onclick="deleteRequest()">Delete Request</button>
         </div>
 
+        {{ with .RequestDetails }}
         <table class="request-details-style">
-            {{ with .RequestDetails }}
                 <tr>
                     <td>Timestamp</td>
                     <td>{{.Timestamp}}</td>
@@ -184,40 +184,46 @@
 
                     </td>
                 </tr>
-
-                {{ if .Response }}
-                <tr>
-                    <td>Returned Response</td>
-                    <td>
-                        <table style = "width: 500px;">
-                            <tr>
-                                <td>Target Host</td>
-                                <td>{{ .Response.Target }}</td>
-                            </tr>
-                            <tr>
-                                <td>StatusCode</td>
-                                <td>{{ .Response.ResponseStatusCode }}</td>
-                            </tr>
-                            <tr>
-                                <td>ResponseBody</td>
-                                <td>{{ .Response.ResponseBody }}</td>
-                            </tr>
-
-                            {{ if .Response.Error }}
-                            <tr>
-                                <td>Error</td>
-                                <td>{{ .Response.Error }}</td>
-                            </tr>
-                            {{ end }}
-                        </table>
-
-                    </td>
-                </tr>
-                {{ end }}
-
-            {{ end }}
         </table>
+        {{ if .Response }}
+        <h2>Returned Response</h2>
+        <table class="request-details-style">
+            <tr>
+                <td>Target Host</td>
+                <td>{{ .Response.Target }}</td>
+            </tr>
+            <tr>
+                <td>StatusCode</td>
+                <td>{{ .Response.ResponseStatusCode }}</td>
+            </tr>
+            <tr>
+                <td>ResponseBody</td>
+                <td>{{ .Response.ResponseBody }}</td>
+            </tr>
 
+            {{ if .Response.Error }}
+            <tr>
+                <td>Error</td>
+                <td>{{ .Response.Error }}</td>
+            </tr>
+            {{ end }}
+
+            <tr>
+                <td>Header</td>
+                <td>
+                    <table style="width: 500px;">
+                        {{ range $key, $value := .Response.ResponseHeader }}
+                        <tr>
+                            <td>{{ $key }}</td>
+                            <td>{{ $value }}</td>
+                        </tr>
+                        {{ end }}
+                    </table>
+                </td>
+            </tr>
+        </table>
+        {{ end }}
+        {{ end }}
     </div>
 
 </div>

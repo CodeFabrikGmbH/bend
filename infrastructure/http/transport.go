@@ -80,12 +80,22 @@ func (t Transport) SendRequestToTarget(rr request.Request, targetUrl string) req
 	}()
 
 	responseBody, err := ioutil.ReadAll(response.Body)
+	responseHeader := readHeaders(response.Header)
 
 	return request.Response{
 		Target:             finalUrl,
 		ResponseBody:       string(responseBody),
+		ResponseHeader:     responseHeader,
 		ResponseStatusCode: response.StatusCode,
 	}
+}
+
+func readHeaders(header http.Header) map[string][]string {
+	responseHeader := make(map[string][]string)
+	for key, value := range header {
+		responseHeader[key] = value
+	}
+	return responseHeader
 }
 
 func createHttpClient() *http.Client {

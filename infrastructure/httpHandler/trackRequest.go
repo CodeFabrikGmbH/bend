@@ -40,8 +40,16 @@ func (rs TrackRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeResponse(w, "", fmt.Errorf("root is not server"))
 	} else {
 		response := rs.RequestService.TrackRequest(req)
-
+		addHeaders(w, response.ResponseHeader)
 		w.WriteHeader(response.ResponseStatusCode)
 		_, _ = w.Write([]byte(response.ResponseBody))
+	}
+}
+
+func addHeaders(w http.ResponseWriter, header map[string][]string) {
+	for key, values := range header {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
 	}
 }
