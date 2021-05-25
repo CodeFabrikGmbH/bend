@@ -82,6 +82,7 @@ func (t Transport) SendRequestToTarget(rr request.Request, targetUrl string) req
 	responseBody, err := ioutil.ReadAll(response.Body)
 
 	return request.Response{
+		Target:             finalUrl,
 		ResponseBody:       string(responseBody),
 		ResponseStatusCode: response.StatusCode,
 	}
