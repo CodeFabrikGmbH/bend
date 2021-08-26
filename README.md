@@ -22,6 +22,9 @@ Some paths are not available for tracking as they are in use for internal purpos
 * /static/*
 * /favicon.ico
 
-
+# Path variables
+It is possible to define path variables as regexes. For example, the date in the
+`/api/aggregate/2021-08-15` is a variable and needs to be passed on to the target. Then specify the path as
+`/api/aggregate/\d{4}-\d{2}-\d{2}`.
 
 
