@@ -38,22 +38,30 @@ func (rs RequestService) TrackRequest(req request.Request) request.Response {
 }
 
 func (rs RequestService) getOrCreateResponse(req request.Request) request.Response {
-	config := rs.ConfigRepository.Find(req.Path)
+	configItem := rs.ConfigRepository.Find(req.Path)
 
-	if config == nil {
+	if configItem == nil {
+		allConfigs := rs.ConfigRepository.FindAll()
+		target, err := config.TestIfRegexConfigMatches(allConfigs, req.Path)
+		if err == nil {
+			return rs.Transport.SendRequestToTarget(req, target)
+		}
+	}
+
+	if configItem == nil {
 		return request.Response{
 			Target:             "no target - mocked response",
 			ResponseStatusCode: defaultStatusCode,
 			ResponseBody:       "ok",
 		}
 	}
-	if len(config.Target) != 0 {
-		return rs.Transport.SendRequestToTarget(req, config.Target)
+	if len(configItem.Target) != 0 {
+		return rs.Transport.SendRequestToTarget(req, configItem.Target)
 	}
 
 	return request.Response{
 		Target:             "no target - mocked response",
-		ResponseStatusCode: config.Response.StatusCode,
-		ResponseBody:       config.Response.Body,
+		ResponseStatusCode: configItem.Response.StatusCode,
+		ResponseBody:       configItem.Response.Body,
 	}
 }
