@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"regexp"
 	"strings"
 )
@@ -12,9 +13,10 @@ type Response struct {
 }
 
 type Config struct {
-	Path     string   `json:"path"`
-	Target   string   `json:"target"`
-	Response Response `json:"response"`
+	Path     string    `json:"path"`
+	Target   string    `json:"target"`
+	Response Response  `json:"response"`
+	Id       uuid.UUID `json:"id"`
 }
 
 type ConfigData struct {
@@ -22,8 +24,11 @@ type ConfigData struct {
 	CurrentConfig Config
 }
 
-func TestIfRegexConfigMatches(configs []Config, path string) (string, error) {
+func FindFirstMatchingConfig(configs []Config, path string) (Config, error) {
 	for _, config := range configs {
+		if config.Path == path {
+			return config, nil
+		}
 		matched, _ := regexp.MatchString(`^`+config.Path+`$`, path)
 		if matched && len(config.Target) != 0 {
 			domains := strings.Split(path, `/`)
@@ -35,8 +40,9 @@ func TestIfRegexConfigMatches(configs []Config, path string) (string, error) {
 					sb.WriteString(part)
 				}
 			}
-			return sb.String(), nil
+			config.Target = sb.String()
+			return config, nil
 		}
 	}
-	return "", errors.New("no match")
+	return Config{}, errors.New("no match")
 }
