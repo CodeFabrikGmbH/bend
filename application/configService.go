@@ -2,6 +2,7 @@ package application
 
 import (
 	"code-fabrik.com/bend/domain/config"
+	"github.com/google/uuid"
 	"sort"
 )
 
@@ -9,7 +10,7 @@ type ConfigService struct {
 	ConfigRepository config.Repository
 }
 
-func (cs ConfigService) GetConfigData(path string) config.ConfigData {
+func (cs ConfigService) GetConfigData(id uuid.UUID) config.ConfigData {
 	configs := cs.ConfigRepository.FindAll()
 	sort.SliceStable(configs, func(i, j int) bool {
 		return configs[i].Path > configs[j].Path
@@ -17,12 +18,12 @@ func (cs ConfigService) GetConfigData(path string) config.ConfigData {
 
 	return config.ConfigData{
 		Configs:       configs,
-		CurrentConfig: cs.getCurrentConfig(path),
+		CurrentConfig: cs.getCurrentConfig(id),
 	}
 }
 
-func (cs ConfigService) getCurrentConfig(path string) config.Config {
-	configData := cs.ConfigRepository.Find(path)
+func (cs ConfigService) getCurrentConfig(id uuid.UUID) config.Config {
+	configData := cs.ConfigRepository.Find(id)
 	if configData != nil {
 		return *configData
 	}
@@ -36,8 +37,8 @@ func (cs ConfigService) getCurrentConfig(path string) config.Config {
 	}
 }
 
-func (cs ConfigService) Delete(path string) error {
-	return cs.ConfigRepository.Delete(path)
+func (cs ConfigService) Delete(id uuid.UUID) error {
+	return cs.ConfigRepository.Delete(id)
 }
 
 func (cs ConfigService) Save(config config.Config) error {

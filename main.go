@@ -10,6 +10,7 @@ import (
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/google/uuid"
 	"net/http"
 )
 
@@ -18,6 +19,8 @@ func main() {
 	defer func() {
 		_ = db.Close()
 	}()
+
+	migrate(configRepository)
 
 	keycloakService := keycloak.New()
 	configService := application.ConfigService{
@@ -52,6 +55,24 @@ func main() {
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Println(err)
+	}
+}
+
+func migrate(configRepository config.Repository) {
+	configs := configRepository.FindAll()
+	addIdentifier := false
+	for _, configItem := range configs {
+		if configItem.Id == uuid.Nil {
+			addIdentifier = true
+		}
+	}
+	if addIdentifier {
+		fmt.Println("adding identifier and deleting all entries with URL keys")
+		_ = configRepository.DeleteAll()
+		for _, configItem := range configs {
+			configItem.Id = uuid.New()
+			_ = configRepository.Save(configItem)
+		}
 	}
 }
 

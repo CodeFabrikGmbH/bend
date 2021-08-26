@@ -48,11 +48,10 @@ var (
 
 var (
 	defaultTestConfigInput = ConfigInput{
-		OriginalPath: "/originalPath",
-		Path:         "/path",
-		Target:       "",
-		StatusCode:   "200",
-		Body:         "testConfigBody",
+		Path:       "/path",
+		Target:     "",
+		StatusCode: "200",
+		Body:       "testConfigBody",
 	}
 
 	defaultTestSendRequestInput = SendRequestInput{

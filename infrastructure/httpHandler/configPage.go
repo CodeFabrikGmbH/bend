@@ -5,6 +5,7 @@ import (
 	"code-fabrik.com/bend/infrastructure/htmlTemplate"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http"
 	"strings"
 )
@@ -15,11 +16,11 @@ type ConfigPage struct {
 }
 
 type ConfigInput struct {
-	OriginalPath string `json:"originalPath"`
-	Path         string `json:"path"`
-	Target       string `json:"target"`
-	StatusCode   string `json:"statusCode"`
-	Body         string `json:"body"`
+	Path       string    `json:"path"`
+	Target     string    `json:"target"`
+	StatusCode string    `json:"statusCode"`
+	Body       string    `json:"body"`
+	Id         uuid.UUID `json:"id"`
 }
 
 func (cp ConfigPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -35,11 +36,16 @@ func (cp ConfigPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := strings.TrimPrefix(r.URL.Path, "/configs")
+	id, _ := ParseSubPathAsUUID(r.URL.Path, "/configs/")
 
 	switch r.Method {
 	case http.MethodGet:
-		configData := cp.ConfigService.GetConfigData(path)
+		configData := cp.ConfigService.GetConfigData(id)
 		htmlTemplate.PresentHtmlTemplate(w, "resources/config.html", configData)
 	}
+}
+
+func ParseSubPathAsUUID(path string, prefix string) (uuid.UUID, error) {
+	idAsString := strings.TrimPrefix(path, prefix)
+	return uuid.Parse(idAsString)
 }
