@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"github.com/google/uuid"
 	"regexp"
 	"strings"
@@ -19,30 +18,41 @@ type Config struct {
 	Id       uuid.UUID `json:"id"`
 }
 
+func (c *Config) HasTargetPath() bool {
+	return len(c.Target) != 0
+}
+
+func (c *Config) GenerateFinalTargetPath(path string) string {
+	if c.Path == path {
+		return c.Target
+	}
+
+	var sb strings.Builder
+	sb.WriteString(c.Target)
+	domains := strings.Split(path, `/`)
+	for _, part := range domains {
+		if len(part) > 0 {
+			sb.WriteString(`/`)
+			sb.WriteString(part)
+		}
+	}
+	return sb.String()
+}
+
 type ConfigData struct {
 	Configs       []Config
 	CurrentConfig Config
 }
 
-func FindFirstMatchingConfig(configs []Config, path string) (Config, error) {
-	for _, config := range configs {
-		if config.Path == path {
-			return config, nil
+func FindMatchingConfig(configs []Config, path string) *Config {
+	for _, conf := range configs {
+		if conf.Path == path {
+			return &conf
 		}
-		matched, _ := regexp.MatchString(`^`+config.Path+`$`, path)
-		if matched && len(config.Target) != 0 {
-			domains := strings.Split(path, `/`)
-			var sb strings.Builder
-			sb.WriteString(config.Target)
-			for _, part := range domains {
-				if len(part) > 0 {
-					sb.WriteString(`/`)
-					sb.WriteString(part)
-				}
-			}
-			config.Target = sb.String()
-			return config, nil
+		matched, _ := regexp.MatchString(`^`+conf.Path+`$`, path)
+		if matched {
+			return &conf
 		}
 	}
-	return Config{}, errors.New("no match")
+	return nil
 }

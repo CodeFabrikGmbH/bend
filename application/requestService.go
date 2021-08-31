@@ -40,12 +40,8 @@ func (rs RequestService) TrackRequest(req request.Request) request.Response {
 func (rs RequestService) getOrCreateResponse(req request.Request) request.Response {
 	allConfigs := rs.ConfigRepository.FindAll()
 
-	configItem, err := config.FindFirstMatchingConfig(allConfigs, req.Path)
-	if err == nil {
-		if len(configItem.Target) != 0 {
-			return rs.Transport.SendRequestToTarget(req, configItem.Target)
-		}
-	} else {
+	configItem := config.FindMatchingConfig(allConfigs, req.Path)
+	if configItem == nil {
 		return request.Response{
 			Target:             "no target - mocked response",
 			ResponseStatusCode: defaultStatusCode,
@@ -53,9 +49,14 @@ func (rs RequestService) getOrCreateResponse(req request.Request) request.Respon
 		}
 	}
 
-	return request.Response{
-		Target:             "no target - mocked response",
-		ResponseStatusCode: configItem.Response.StatusCode,
-		ResponseBody:       configItem.Response.Body,
+	if configItem.HasTargetPath() {
+		targetPath := configItem.GenerateFinalTargetPath(req.Path)
+		return rs.Transport.SendRequestToTarget(req, targetPath)
+	} else {
+		return request.Response{
+			Target:             "no target - mocked response",
+			ResponseStatusCode: configItem.Response.StatusCode,
+			ResponseBody:       configItem.Response.Body,
+		}
 	}
 }
