@@ -9,11 +9,11 @@ import (
 func Test_GenerateFinalTargetPath(t *testing.T) {
 	config := Config{
 		Path:     "/.*Blub",
-		Target:   "/Bla",
+		Target:   "http://targetUrl",
 		Response: Response{},
 		Id:       uuid.UUID{},
 	}
 
 	result := config.GenerateFinalTargetPath("/bliBlub")
-	assert.Equal(t, "/Bla/bliBlub", result)
+	assert.Equal(t, "http://targetUrl/bliBlub", result)
 }

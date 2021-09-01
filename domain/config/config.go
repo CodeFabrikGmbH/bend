@@ -3,7 +3,6 @@ package config
 import (
 	"github.com/google/uuid"
 	"regexp"
-	"strings"
 )
 
 type Response struct {
@@ -27,16 +26,7 @@ func (c *Config) GenerateFinalTargetPath(path string) string {
 		return c.Target
 	}
 
-	var sb strings.Builder
-	sb.WriteString(c.Target)
-	domains := strings.Split(path, `/`)
-	for _, part := range domains {
-		if len(part) > 0 {
-			sb.WriteString(`/`)
-			sb.WriteString(part)
-		}
-	}
-	return sb.String()
+	return c.Target + path
 }
 
 type ConfigData struct {
