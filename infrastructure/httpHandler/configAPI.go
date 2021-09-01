@@ -6,6 +6,7 @@ import (
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -30,7 +31,7 @@ func (cp ConfigAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := strings.TrimPrefix(r.URL.Path, "/api/configs")
+	id, _ := ParseSubPathAsUUID(r.URL.Path, "/api/configs/")
 
 	switch r.Method {
 	case http.MethodPut:
@@ -44,20 +45,16 @@ func (cp ConfigAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			writeResponse(w, "", err)
 		} else {
-			config, err := createConfigFromInput(configInput)
+			configFromInput, err := createConfigFromInput(configInput)
 			if err != nil {
 				writeResponse(w, "", err)
 			} else {
-				if len(configInput.OriginalPath) != 0 {
-					_ = cp.ConfigService.Delete(configInput.OriginalPath)
-				}
-
-				cp.ConfigService.Save(config)
+				_ = cp.ConfigService.Save(configFromInput)
 				writeResponse(w, "ok", err)
 			}
 		}
 	case http.MethodDelete:
-		err := cp.ConfigService.Delete(path)
+		err := cp.ConfigService.Delete(id)
 		writeResponse(w, "ok", err)
 	}
 }
@@ -69,6 +66,15 @@ func createConfigFromInput(input ConfigInput) (config.Config, error) {
 		return config.Config{}, fmt.Errorf("statuscode is not a number")
 	}
 
+	id := uuid.New()
+	if input.Id != uuid.Nil {
+		id = input.Id
+	}
+
+	if strings.Index(path, "/") != 0 {
+		path = "/" + path
+	}
+
 	return config.Config{
 		Path:   path,
 		Target: input.Target,
@@ -76,5 +82,6 @@ func createConfigFromInput(input ConfigInput) (config.Config, error) {
 			StatusCode: statusCode,
 			Body:       input.Body,
 		},
+		Id: id,
 	}, nil
 }

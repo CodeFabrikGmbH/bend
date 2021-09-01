@@ -33,9 +33,10 @@ func Test_ConfigAPI_DELETE(t *testing.T) {
 	before()
 	putDefaultTestConfig()
 
-	assert.True(t, len(configRepository.FindAll()) == 1)
+	configs := configRepository.FindAll()
+	assert.True(t, len(configs) == 1)
 
-	req, _ := http.NewRequest("DELETE", "/api/configs"+defaultTestConfigInput.Path, nil)
+	req, _ := http.NewRequest("DELETE", "/api/configs/"+configs[0].Id.String(), nil)
 	_, _ = runTestServe(req, configAPI)
 
 	assert.True(t, len(configRepository.FindAll()) == 0)
