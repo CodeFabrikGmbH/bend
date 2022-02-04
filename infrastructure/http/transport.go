@@ -100,6 +100,10 @@ func readHeaders(header http.Header) map[string][]string {
 
 func createHttpClient() *http.Client {
 	return &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			//do not follow redirects
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			IdleConnTimeout:       90 * time.Second,
