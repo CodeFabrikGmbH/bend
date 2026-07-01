@@ -114,19 +114,53 @@ func (k *Service) saveTokenAsCookie(token *gocloak.JWT, w http.ResponseWriter) e
 		return fmt.Errorf("token undefined")
 	}
 
-	accessCookie := http.Cookie{Path: "/", Name: "access", Value: token.AccessToken, Expires: time.Now().Add(365 * 24 * time.Hour)}
+	accessCookie := http.Cookie{
+		Path:     "/",
+		Name:     "access",
+		Value:    token.AccessToken,
+		Expires:  time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
+		HttpOnly: true,
+		Secure:   env.COOKIE_SECURE,
+		SameSite: http.SameSiteLaxMode,
+	}
 	http.SetCookie(w, &accessCookie)
 
-	refreshCookie := http.Cookie{Path: "/", Name: "refresh", Value: token.RefreshToken, Expires: time.Now().Add(365 * 24 * time.Hour)}
+	refreshCookie := http.Cookie{
+		Path:     "/",
+		Name:     "refresh",
+		Value:    token.RefreshToken,
+		Expires:  time.Now().Add(time.Duration(token.RefreshExpiresIn) * time.Second),
+		HttpOnly: true,
+		Secure:   env.COOKIE_SECURE,
+		SameSite: http.SameSiteLaxMode,
+	}
 	http.SetCookie(w, &refreshCookie)
 	return nil
 }
 
 func (k *Service) deleteCookies(w http.ResponseWriter) {
-	accessCookie := http.Cookie{Path: "/", Name: "access", Value: "", Expires: time.Unix(0, 0)}
+	accessCookie := http.Cookie{
+		Path:     "/",
+		Name:     "access",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   env.COOKIE_SECURE,
+		SameSite: http.SameSiteLaxMode,
+	}
 	http.SetCookie(w, &accessCookie)
 
-	refreshCookie := http.Cookie{Path: "/", Name: "refresh", Value: "", Expires: time.Unix(0, 0)}
+	refreshCookie := http.Cookie{
+		Path:     "/",
+		Name:     "refresh",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   env.COOKIE_SECURE,
+		SameSite: http.SameSiteLaxMode,
+	}
 	http.SetCookie(w, &refreshCookie)
 }
 

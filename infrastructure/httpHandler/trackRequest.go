@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+// maxRequestBodyBytes caps how much of an incoming request body is read and
+// stored, so a single oversized upload cannot exhaust memory.
+const maxRequestBodyBytes = 10 << 20 // 10 MiB
+
 type TrackRequest struct {
 	RequestService application.RequestService
 }
@@ -24,7 +28,12 @@ func (rs TrackRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		_ = r.Body.Close()
 	}()
-	body, _ := ioutil.ReadAll(r.Body)
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
+		return
+	}
 
 	req := request.Request{
 		Timestamp: time.Now().UnixNano(),

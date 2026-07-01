@@ -42,10 +42,9 @@ func (lp LoginPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (lp LoginPage) login(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	username := query.Get("username")
-	password := query.Get("password")
-	origin := query.Get("origin")
+	username := r.PostFormValue("username")
+	password := r.PostFormValue("password")
+	origin := r.PostFormValue("origin")
 
 	user, err := lp.KeyCloakService.Login(ctx, w, username, password)
 	errorString := ""
@@ -62,17 +61,14 @@ func (lp LoginPage) logout(ctx context.Context, w http.ResponseWriter) {
 }
 
 func (lp LoginPage) isLogoutRequest(r *http.Request) bool {
-	query := r.URL.Query()
-	logout := query.Get("logout")
-	return len(logout) != 0
+	return r.Method == http.MethodPost && len(r.PostFormValue("logout")) != 0
 }
 
 func (lp LoginPage) isLoginRequest(r *http.Request) bool {
-	query := r.URL.Query()
-	username := query.Get("username")
-	password := query.Get("password")
-
-	return len(username) != 0 && len(password) != 0
+	if r.Method != http.MethodPost {
+		return false
+	}
+	return len(r.PostFormValue("username")) != 0 && len(r.PostFormValue("password")) != 0
 }
 
 func createLoginViewData(userInfo *authentication.User, origin string, err string) LoginViewData {

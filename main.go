@@ -12,6 +12,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/google/uuid"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -48,11 +49,19 @@ func main() {
 	http.Handle("/configs/", httpHandler.ConfigPage{KeyCloakService: keycloakService, ConfigService: configService})
 
 	http.Handle("/api/configs/", httpHandler.ConfigAPI{KeyCloakService: keycloakService, ConfigService: configService})
-	http.Handle("/api/requests/", httpHandler.RequestAPI{RequestService: requestService})
+	http.Handle("/api/requests/", httpHandler.RequestAPI{KeyCloakService: keycloakService, RequestService: requestService})
 
 	http.Handle("/", httpHandler.TrackRequest{RequestService: requestService})
 
-	err := http.ListenAndServe(":8080", nil)
+	server := &http.Server{
+		Addr:              ":8080",
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	err := server.ListenAndServe()
 	if err != nil {
 		fmt.Println(err)
 	}

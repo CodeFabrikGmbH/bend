@@ -41,7 +41,7 @@ var (
 
 	dashboardPage = DashboardPage{KeyCloakService: keycloakService, DashboardService: dashboardService}
 
-	requestAPI = RequestAPI{RequestService: requestService}
+	requestAPI = RequestAPI{KeyCloakService: keycloakService, RequestService: requestService}
 
 	tracker = TrackRequest{RequestService: requestService}
 )

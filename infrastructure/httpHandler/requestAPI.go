@@ -2,6 +2,7 @@ package httpHandler
 
 import (
 	"code-fabrik.com/bend/application"
+	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,7 +14,8 @@ type SendRequestInput struct {
 }
 
 type RequestAPI struct {
-	RequestService application.RequestService
+	KeyCloakService *keycloak.Service
+	RequestService  application.RequestService
 }
 
 func (rs RequestAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -23,6 +25,11 @@ func (rs RequestAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
+
+	if _, err := rs.KeyCloakService.Authenticate(w, r); err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/requests")
 
