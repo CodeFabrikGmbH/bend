@@ -4,7 +4,7 @@ import (
 	"code-fabrik.com/bend/domain/request"
 	"encoding/json"
 	"fmt"
-	"github.com/boltdb/bolt"
+	bolt "go.etcd.io/bbolt"
 	"strconv"
 	"strings"
 )

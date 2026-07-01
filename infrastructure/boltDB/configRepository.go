@@ -4,7 +4,7 @@ import (
 	"code-fabrik.com/bend/domain/config"
 	"encoding/json"
 	"fmt"
-	"github.com/boltdb/bolt"
+	bolt "go.etcd.io/bbolt"
 	"github.com/google/uuid"
 )
 

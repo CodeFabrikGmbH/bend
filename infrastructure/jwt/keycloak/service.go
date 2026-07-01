@@ -6,7 +6,7 @@ import (
 	"code-fabrik.com/bend/infrastructure/jwt/jwks"
 	"context"
 	"fmt"
-	"github.com/Nerzal/gocloak/v7"
+	"github.com/Nerzal/gocloak/v13"
 	"net/http"
 	"time"
 )
@@ -91,7 +91,7 @@ func (k *Service) Login(ctx context.Context, w http.ResponseWriter, username, pa
 	return k.handleNewJWT(ctx, w, err, client, jwt)
 }
 
-func (k *Service) handleNewJWT(ctx context.Context, w http.ResponseWriter, err error, client gocloak.GoCloak, jwt *gocloak.JWT) (*authentication.User, error) {
+func (k *Service) handleNewJWT(ctx context.Context, w http.ResponseWriter, err error, client *gocloak.GoCloak, jwt *gocloak.JWT) (*authentication.User, error) {
 	userInfo, err := client.GetUserInfo(ctx, jwt.AccessToken, k.config.Realm)
 	if err != nil {
 		return nil, err

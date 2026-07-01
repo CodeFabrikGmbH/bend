@@ -8,7 +8,7 @@ import (
 	"code-fabrik.com/bend/infrastructure/htmlTemplate"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"encoding/json"
-	"github.com/boltdb/bolt"
+	bolt "go.etcd.io/bbolt"
 	"io"
 	"net/http"
 	"net/http/httptest"

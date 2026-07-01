@@ -12,7 +12,7 @@ import (
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"context"
 	"errors"
-	"github.com/boltdb/bolt"
+	bolt "go.etcd.io/bbolt"
 	"github.com/google/uuid"
 	"log/slog"
 	"net/http"
