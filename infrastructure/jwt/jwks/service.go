@@ -5,7 +5,7 @@ import (
 	"code-fabrik.com/bend/infrastructure/env"
 	"crypto/rsa"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/s12v/go-jwks"
 )
 

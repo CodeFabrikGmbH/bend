@@ -3,15 +3,35 @@ package application
 import (
 	"code-fabrik.com/bend/domain/config"
 	"code-fabrik.com/bend/domain/request"
+	"time"
 )
 
 type RequestService struct {
 	RequestRepository request.Repository
 	ConfigRepository  config.Repository
 	Transport         request.Transport
+	Hub               *EventHub
 }
 
 const defaultStatusCode = 200
+
+// RequestPage is a page of request summaries returned by the pagination API.
+type RequestPage struct {
+	Items   []RequestAbstract `json:"items"`
+	HasMore bool              `json:"hasMore"`
+}
+
+// ListRequests returns a page of request summaries for a path, newest first.
+// before is an exclusive upper bound on the request id (0 for the newest page).
+func (rs RequestService) ListRequests(path string, before int, limit int) RequestPage {
+	summaries, hasMore := rs.RequestRepository.GetSummariesPage(path, before, limit)
+
+	items := make([]RequestAbstract, 0, len(summaries))
+	for _, s := range summaries {
+		items = append(items, newRequestAbstract(s))
+	}
+	return RequestPage{Items: items, HasMore: hasMore}
+}
 
 func (rs RequestService) DeleteAllRequestsForPath(path string) error {
 	return rs.RequestRepository.DeletePath(path)
@@ -28,10 +48,21 @@ func (rs RequestService) SendRequestToTarget(path, requestId, targetUrl string) 
 
 func (rs RequestService) TrackRequest(req request.Request) request.Response {
 	req.Response = rs.getOrCreateResponse(req)
-	err := rs.RequestRepository.Add(req)
+	stored, err := rs.RequestRepository.Add(req)
 
 	if err != nil {
 		req.Response.Error = err.Error()
+		return req.Response
+	}
+
+	if rs.Hub != nil {
+		rs.Hub.Publish(RequestEvent{
+			Path:      stored.Path,
+			ID:        stored.ID,
+			Method:    stored.Method,
+			Status:    stored.Response.ResponseStatusCode,
+			Timestamp: time.Unix(0, stored.Timestamp).Format("2 Jan 2006 15:04:05"),
+		})
 	}
 
 	return req.Response

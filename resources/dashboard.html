@@ -1,242 +1,580 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta charset="utf-8"/>
-    <link rel="stylesheet" type="text/css" href="/static/css/styles.css"/>
-    <title></title>
-    <script>
-        let API_URL = "/api/requests";
-        let PAGE_URL = "/dashboard/";
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css?v=0.6.5"/>
+    <title>bend — Requests</title>
+</head>
+<body>
+<div class="app">
+    <header class="topbar">
+        <div class="brand">bend<span class="dot">.</span></div>
+        <nav class="nav">
+            <a class="active" href="/dashboard/">Requests</a>
+            <a href="/configs/">Endpoints</a>
+            <a href="/readme/">Docs</a>
+        </nav>
+        <form class="logout-form" method="post" action="/login">
+            <input type="hidden" name="logout" value="true"/>
+            <button class="logout-btn" type="submit">Logout</button>
+        </form>
+    </header>
 
-        function openPath(path) {
-            window.location = PAGE_URL + path + "/";
+    <div class="inspector"
+         data-current-path="{{ .CurrentPath }}"
+         data-request-id="{{ .RequestDetails.ID }}"
+         data-request-total="{{ .RequestTotal }}"
+         data-has-more="{{ if .HasMore }}1{{ else }}0{{ end }}"
+         data-uri="{{ .RequestDetails.Uri }}">
+        <!-- Endpoints -->
+        <section class="col endpoints">
+            <div class="col-head"><h2>Endpoints</h2></div>
+            <div class="listtools">
+                <div class="search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input id="epSearch" placeholder="Endpoints filtern …" autocomplete="off"/>
+                </div>
+            </div>
+            <div class="scroll">
+                {{ with .Paths }}
+                {{ range . }}
+                <div class="ep {{ if eq .Path $.CurrentPath }}active{{ end }}">
+                    <span class="ep-path" data-open-path="{{ .Path }}">{{ .Path }}</span>
+                    <span class="ep-count" data-open-path="{{ .Path }}">{{ .Count }}</span>
+                    <span class="ep-trash" data-del-path="{{ .Path }}" title="Alle Requests dieses Pfads löschen" aria-label="Pfad löschen">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                    </span>
+                </div>
+                {{ end }}
+                {{ else }}
+                <div class="col-empty">Noch keine Requests.<br>Zeig einen Client auf diesen Server.</div>
+                {{ end }}
+            </div>
+            {{ if gt .PathTotal (len .Paths) }}
+            <div class="list-note">Zeige aktivste {{ len .Paths }} von {{ .PathTotal }} Pfaden</div>
+            {{ end }}
+        </section>
+
+        <!-- Request list -->
+        <section class="col list">
+            <div class="col-head">
+                <h2 class="path-title">{{ if .CurrentPath }}{{ .CurrentPath }}{{ else }}Requests{{ end }}</h2>
+                {{ if .CurrentPath }}
+                <button class="live-toggle" id="liveToggle" title="Neue Requests live einblenden"><span class="live-dot"></span>Live</button>
+                {{ end }}
+            </div>
+            {{ if .CurrentPath }}
+            <div class="listtools">
+                <div class="search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input id="search" placeholder="Filter: Methode, Status, ID …" autocomplete="off"/>
+                </div>
+            </div>
+            {{ end }}
+            <div class="scroll" id="reqScroll">
+                {{ with .Requests }}
+                {{ range . }}
+                <div class="req {{ if eq .ID $.RequestDetails.ID }}active{{ end }}" data-open-request="{{ .ID }}">
+                    <span class="method m-{{ .Method }}">{{ .Method }}</span>
+                    <div class="req-mid">
+                        <div class="req-time">{{ .Timestamp }}</div>
+                        <div class="req-id">#{{ .ID }}</div>
+                    </div>
+                    <span class="status" data-status="{{ .Status }}">{{ if .Status }}{{ .Status }}{{ else }}—{{ end }}</span>
+                </div>
+                {{ end }}
+                {{ else }}
+                <div class="col-empty">{{ if .CurrentPath }}Keine Requests für diesen Pfad.{{ else }}Wähl links einen Endpoint.{{ end }}</div>
+                {{ end }}
+            </div>
+            {{ if gt .RequestTotal (len .Requests) }}
+            <div class="list-note" id="listNote">Zeige neueste {{ len .Requests }} von {{ .RequestTotal }}</div>
+            {{ end }}
+        </section>
+
+        <!-- Detail -->
+        <section class="col detail">
+            <div class="col-head"><h2>Detail</h2></div>
+            <div class="scroll">
+                {{ with .RequestDetails }}
+                {{ if .ID }}
+                <div class="detail-head">
+                    <div class="detail-title">
+                        <span class="method m-{{ .Method }}">{{ .Method }}</span>
+                        <span class="p">{{ $.CurrentPath }}</span>
+                    </div>
+                    <div class="detail-sub">
+                        <span><b>{{ .Timestamp }}</b></span>
+                        <span>Status <b class="status" data-status="{{ .Response.ResponseStatusCode }}">{{ if .Response.ResponseStatusCode }}{{ .Response.ResponseStatusCode }}{{ else }}—{{ end }}</b></span>
+                        <span>Host <b>{{ .Host }}</b></span>
+                        <span>ID <b>#{{ .ID }}</b></span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn primary" id="btnSend">An Ziel senden</button>
+                        <button class="btn danger" id="btnDelete">Request löschen</button>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" data-tab="request">Request</button>
+                    <button class="tab" data-tab="response">Response</button>
+                </div>
+
+                <div class="pane" data-pane="request">
+                    <div class="section-label">Body</div>
+                    <pre class="code" data-json id="reqBody">{{ .Body }}</pre>
+                    <div class="section-label">Header</div>
+                    <table class="headers">
+                        {{ range $key, $value := .Header }}
+                        <tr><td class="h-key">{{ $key }}</td><td class="h-val">{{ range $value }}{{ . }} {{ end }}</td></tr>
+                        {{ end }}
+                    </table>
+                </div>
+
+                <div class="pane hidden" data-pane="response">
+                    {{ with .Response }}
+                    <div class="resp-banner">
+                        {{ if .Error }}
+                        <span class="err">✕ {{ .Error }}</span>
+                        {{ else }}
+                        <span class="status" data-status="{{ .ResponseStatusCode }}">{{ .ResponseStatusCode }}</span>
+                        <span class="target">{{ .Target }}</span>
+                        {{ end }}
+                    </div>
+                    {{ if not .Error }}
+                    <div class="section-label">Response-Body</div>
+                    <pre class="code" data-json id="respBody">{{ .ResponseBody }}</pre>
+                    {{ if .ResponseHeader }}
+                    <div class="section-label">Header</div>
+                    <table class="headers">
+                        {{ range $key, $value := .ResponseHeader }}
+                        <tr><td class="h-key">{{ $key }}</td><td class="h-val">{{ range $value }}{{ . }} {{ end }}</td></tr>
+                        {{ end }}
+                    </table>
+                    {{ end }}
+                    {{ end }}
+                    {{ end }}
+                </div>
+                {{ else }}
+                <div class="detail-empty"><div>Kein Request ausgewählt.<br>Wähl links einen Request.</div></div>
+                {{ end }}
+                {{ end }}
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Send modal -->
+<div class="modal-backdrop" id="sendModal">
+    <div class="modal">
+        <h3>An Ziel senden</h3>
+        <p>Diesen Request an eine URL weiterleiten. Die Antwort des Ziels wird angezeigt.</p>
+        <input class="input" type="text" id="targetUrl" value="http://localhost:8080{{ .RequestDetails.Uri }}"/>
+        <div class="modal-actions">
+            <button class="btn" data-close-modal="sendModal">Abbrechen</button>
+            <button class="btn primary" id="btnSendConfirm">Senden</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal-backdrop" id="confirmModal">
+    <div class="modal">
+        <h3 id="confirmTitle">Bestätigen</h3>
+        <p id="confirmMsg"></p>
+        <div class="modal-actions">
+            <button class="btn" data-close-modal="confirmModal">Abbrechen</button>
+            <button class="btn danger" id="confirmOk">Löschen</button>
+        </div>
+    </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+    (function () {
+        "use strict";
+        var strip = function (p) { return String(p).replace(/^\/+/, ""); };
+        var pageUrl = function (path, id) {
+            var u = "/dashboard/" + strip(path) + "/";
+            return id ? u + id : u;
+        };
+        var apiUrl = function (path, id) { return "/api/requests/" + strip(path) + "/" + id; };
+
+        function esc(s) {
+            return String(s).replace(/[&<>]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]; });
+        }
+        function statusClass(s) { return (s && String(s) !== "0") ? "s-" + String(s).charAt(0) : "none"; }
+
+        function toast(title, desc, kind) {
+            var el = document.createElement("div");
+            el.className = "toast " + (kind || "");
+            el.innerHTML = '<div><div class="tt">' + esc(title) + '</div>' + (desc ? '<div class="td">' + esc(desc) + '</div>' : '') + '</div>';
+            document.getElementById("toasts").appendChild(el);
+            setTimeout(function () { el.style.transition = "opacity .3s"; el.style.opacity = "0"; }, 3400);
+            setTimeout(function () { el.remove(); }, 3800);
         }
 
-        function openRequest() {
-            let requestId = document.getElementById("requestId").value;
-            window.location = PAGE_URL + {{ .CurrentPath }} + "/" + requestId;
+        // --- shared state, sourced from the .inspector data attributes ---
+        window.BEND = { currentPath: "", requestId: "", requestTotal: 0, hasMore: false };
+        function refreshBend() {
+            var el = document.querySelector(".inspector");
+            if (!el) { return; }
+            BEND.currentPath = el.getAttribute("data-current-path") || "";
+            BEND.requestId = el.getAttribute("data-request-id") || "";
+            BEND.requestTotal = parseInt(el.getAttribute("data-request-total"), 10) || 0;
+            BEND.hasMore = el.getAttribute("data-has-more") === "1";
         }
 
-        function deletePath(path) {
-            let r = confirm("Delete all requests for path?");
-            if (r === true) {
-                let sendUrl = API_URL + path + "/*";
-
-                var xmlHttp = new XMLHttpRequest();
-                xmlHttp.onreadystatechange = function () {
-                    if (xmlHttp.readyState === XMLHttpRequest.DONE) {
-                        window.location.reload();
-                    }
-                }
-                xmlHttp.open("DELETE", sendUrl, true); // true for asynchronous
-                xmlHttp.send(null);
-            }
+        function highlight(str) {
+            var s = esc(str)
+                .replace(/"([^"\\]*)":/g, '<span class="k">"$1"</span>:')
+                .replace(/: "([^"\\]*)"/g, ': <span class="s">"$1"</span>')
+                .replace(/: (-?\d+\.?\d*)/g, ': <span class="n">$1</span>')
+                .replace(/: (true|false|null)/g, ': <span class="b">$1</span>');
+            return s;
         }
 
-        function deleteRequest() {
-            let r = confirm("Delete this request?");
-            if (r === true) {
-                let requestId = document.getElementById("requestId").value;
-                let sendUrl = API_URL + {{ .CurrentPath }} + "/" + requestId;
-
-                var xmlHttp = new XMLHttpRequest();
-                xmlHttp.onreadystatechange = function () {
-                    if (xmlHttp.readyState === XMLHttpRequest.DONE) {
-                        openPath({{ .CurrentPath }});
-                    }
-                }
-                xmlHttp.open("DELETE", sendUrl, true); // true for asynchronous
-                xmlHttp.send(null);
-            }
-        }
-
-        function sendRequest() {
-            let requestId = document.getElementById("requestId").value;
-            let target = document.getElementById("requestTargetUrl").value;
-
-            let sendUrl = API_URL + {{ .CurrentPath }} + "/" + requestId;
-
-            let sendRequestBody = JSON.stringify({
-                "targetUrl": target
+        // status colour classes from data-status, scoped to a freshly rendered subtree
+        function applyStatusColors(root) {
+            root.querySelectorAll("[data-status]").forEach(function (el) {
+                var s = el.getAttribute("data-status");
+                if (s && s !== "0") { el.classList.add("s-" + s.charAt(0)); }
+                else { el.classList.add("none"); }
             });
-
-            var xmlHttp = new XMLHttpRequest();
-
-            xmlHttp.onreadystatechange = function () {
-                if (xmlHttp.readyState === XMLHttpRequest.DONE) {
-                    window.alert(xmlHttp.responseText);
-                    hideModal();
-                }
-            }
-            xmlHttp.open("POST", sendUrl, true); // true for asynchronous
-            xmlHttp.setRequestHeader('Content-Type', 'application/json');
-            xmlHttp.send(sendRequestBody);
         }
 
-        function hideModal() {
-            let modal = document.getElementById("sendRequestPopup");
-            modal.style.display = "none";
+        // pretty-print + highlight JSON bodies within a subtree
+        function applyJson(root) {
+            root.querySelectorAll("[data-json]").forEach(function (el) {
+                var raw = el.textContent.trim();
+                if (!raw) { el.innerHTML = '<span class="empty">(kein Body)</span>'; return; }
+                var pretty = raw;
+                try { pretty = JSON.stringify(JSON.parse(raw), null, 2); } catch (e) { /* not JSON */ }
+                el.innerHTML = highlight(pretty);
+                var copy = document.createElement("button");
+                copy.className = "copy-inline"; copy.textContent = "Kopieren";
+                copy.addEventListener("click", function () {
+                    navigator.clipboard && navigator.clipboard.writeText(raw);
+                    toast("Kopiert", null, "ok");
+                });
+                el.appendChild(copy);
+            });
         }
 
-        function init() {
-            document.getElementById("requestId").value = "{{ .RequestDetails.ID }}";
+        // tab switching within a detail subtree
+        function bindTabs(detailRoot) {
+            detailRoot.querySelectorAll(".tab").forEach(function (tab) {
+                tab.addEventListener("click", function () {
+                    var name = tab.getAttribute("data-tab");
+                    detailRoot.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("active", t === tab); });
+                    detailRoot.querySelectorAll("[data-pane]").forEach(function (p) {
+                        p.classList.toggle("hidden", p.getAttribute("data-pane") !== name);
+                    });
+                });
+            });
+        }
 
-            let modal = document.getElementById("sendRequestPopup");
-            let btn = document.getElementById("sendRequestOpenPopupBtn");
-            let span = document.getElementsByClassName("close")[0];
-            btn.onclick = function() {
-                modal.style.display = "block";
+        // --- modals (persistent, bound once) ---
+        function openModal(id) { document.getElementById(id).classList.add("open"); }
+        function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+        document.querySelectorAll(".modal-backdrop").forEach(function (b) {
+            b.addEventListener("click", function (e) { if (e.target === b) { b.classList.remove("open"); } });
+        });
+
+        var confirmResolver = null;
+        function confirmAction(title, msg) {
+            document.getElementById("confirmTitle").textContent = title;
+            document.getElementById("confirmMsg").textContent = msg;
+            openModal("confirmModal");
+            return new Promise(function (resolve) { confirmResolver = resolve; });
+        }
+        document.getElementById("confirmOk").addEventListener("click", function () {
+            closeModal("confirmModal");
+            if (confirmResolver) { confirmResolver(true); confirmResolver = null; }
+        });
+        document.getElementById("confirmModal").addEventListener("click", function (e) {
+            if (e.target.id === "confirmModal" && confirmResolver) { confirmResolver(false); confirmResolver = null; }
+        });
+
+        // --- detail actions (rebound whenever the detail column is swapped) ---
+        function bindDetailActions(detailRoot) {
+            var btnSend = detailRoot.querySelector("#btnSend");
+            if (btnSend) { btnSend.addEventListener("click", function () { openModal("sendModal"); }); }
+            var btnDelete = detailRoot.querySelector("#btnDelete");
+            if (btnDelete) {
+                btnDelete.addEventListener("click", function () {
+                    confirmAction("Request löschen", "Diesen Request unwiderruflich löschen?").then(function (ok) {
+                        if (!ok) { return; }
+                        fetch(apiUrl(BEND.currentPath, BEND.requestId), {method: "DELETE"}).then(function (r) {
+                            if (r.ok) { navigateTo(pageUrl(BEND.currentPath), true, false); }
+                            else { toast("Löschen fehlgeschlagen", "Status " + r.status, "err"); }
+                        }).catch(function (e) { toast("Fehler", String(e), "err"); });
+                    });
+                });
             }
-            span.onclick = function() {
-                modal.style.display = "none";
+        }
+
+        // btnSendConfirm lives in the persistent modal; bind it once.
+        var btnSendConfirm = document.getElementById("btnSendConfirm");
+        if (btnSendConfirm) {
+            btnSendConfirm.addEventListener("click", function () {
+                var target = document.getElementById("targetUrl").value;
+                btnSendConfirm.disabled = true;
+                fetch(apiUrl(BEND.currentPath, BEND.requestId), {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({targetUrl: target})
+                }).then(function (r) { return r.text(); }).then(function (text) {
+                    closeModal("sendModal");
+                    var status = "", err = "";
+                    try { var j = JSON.parse(text); status = j.responseStatusCode || ""; err = j.error || ""; } catch (e) {}
+                    if (err) { toast("Weiterleitung fehlgeschlagen", err, "err"); }
+                    else { toast("An Ziel gesendet", (status ? status + " · " : "") + target, "ok"); }
+                }).catch(function (e) { toast("Fehler", String(e), "err"); })
+                  .finally(function () { btnSendConfirm.disabled = false; });
+            });
+        }
+
+        function confirmDeletePath(path) {
+            confirmAction("Pfad löschen", "Alle Requests für " + path + " löschen?").then(function (ok) {
+                if (!ok) { return; }
+                fetch("/api/requests/" + strip(path) + "/*", {method: "DELETE"}).then(function (r) {
+                    if (r.ok) { window.location.reload(); }
+                    else { toast("Löschen fehlgeschlagen", "Status " + r.status, "err"); }
+                }).catch(function (e) { toast("Fehler", String(e), "err"); });
+            });
+        }
+
+        // --- request list: search + pagination (rebound whenever the list is swapped) ---
+        var paused = false;
+        var reqScroll = null, listNote = null, loading = false, loadedCount = 0, hasMore = false, oldestId = 0;
+
+        function updateNote() {
+            if (!listNote) { return; }
+            listNote.textContent = (hasMore || loadedCount < BEND.requestTotal)
+                ? loadedCount + " von " + BEND.requestTotal + " geladen"
+                : "Alle " + BEND.requestTotal + " geladen";
+        }
+
+        function appendApiRow(it) {
+            var row = document.createElement("div");
+            row.className = "req";
+            row.setAttribute("data-open-request", it.ID);
+            row.innerHTML =
+                '<span class="method m-' + esc(it.method) + '">' + esc(it.method) + '</span>' +
+                '<div class="req-mid"><div class="req-time">' + esc(it.timestamp) + '</div><div class="req-id">#' + esc(it.ID) + '</div></div>' +
+                '<span class="status ' + statusClass(it.status) + '">' + (it.status ? esc(it.status) : "—") + '</span>';
+            reqScroll.appendChild(row);
+        }
+
+        function loadMore() {
+            if (loading || !hasMore || !reqScroll || !BEND.currentPath) { return; }
+            loading = true;
+            var url = "/api/request-list?path=" + encodeURIComponent(BEND.currentPath) + "&before=" + oldestId + "&limit=50";
+            fetch(url).then(function (r) { return r.json(); }).then(function (page) {
+                (page.items || []).forEach(function (it) {
+                    appendApiRow(it);
+                    loadedCount++;
+                    oldestId = parseInt(it.ID, 10) || oldestId;
+                });
+                hasMore = !!page.hasMore;
+                updateNote();
+            }).catch(function () {}).finally(function () { loading = false; });
+        }
+
+        function bindListControls(listRoot) {
+            paused = false;
+
+            var search = listRoot.querySelector("#search");
+            if (search) {
+                search.addEventListener("input", function () {
+                    var q = search.value.toLowerCase();
+                    listRoot.querySelectorAll("#reqScroll .req").forEach(function (row) {
+                        row.style.display = (!q || row.textContent.toLowerCase().indexOf(q) !== -1) ? "" : "none";
+                    });
+                });
             }
-            window.onclick = function(event) {
-                if (event.target === modal) {
-                    modal.style.display = "none";
+
+            var liveToggle = listRoot.querySelector("#liveToggle");
+            if (liveToggle) {
+                liveToggle.addEventListener("click", function () {
+                    paused = !paused;
+                    liveToggle.classList.toggle("paused", paused);
+                    liveToggle.lastChild.textContent = paused ? "Pausiert" : "Live";
+                });
+            }
+
+            reqScroll = listRoot.querySelector("#reqScroll");
+            listNote = listRoot.querySelector("#listNote");
+            loading = false;
+            hasMore = BEND.hasMore;
+            loadedCount = reqScroll ? reqScroll.querySelectorAll(".req").length : 0;
+            oldestId = 0;
+            if (reqScroll) {
+                var rows = reqScroll.querySelectorAll(".req");
+                if (rows.length) { oldestId = parseInt(rows[rows.length - 1].getAttribute("data-open-request"), 10) || 0; }
+                reqScroll.addEventListener("scroll", function () {
+                    if (reqScroll.scrollTop + reqScroll.clientHeight >= reqScroll.scrollHeight - 120) { loadMore(); }
+                });
+            }
+            updateNote();
+            if (reqScroll && BEND.currentPath && hasMore && reqScroll.scrollHeight <= reqScroll.clientHeight + 4) { loadMore(); }
+        }
+
+        function initDetail() {
+            var detailRoot = document.querySelector(".col.detail");
+            if (!detailRoot) { return; }
+            applyStatusColors(detailRoot);
+            applyJson(detailRoot);
+            bindTabs(detailRoot);
+            bindDetailActions(detailRoot);
+        }
+
+        function initList() {
+            var listRoot = document.querySelector(".col.list");
+            if (!listRoot) { return; }
+            applyStatusColors(listRoot);
+            bindListControls(listRoot);
+        }
+
+        function markActiveEndpoint() {
+            document.querySelectorAll(".endpoints .ep").forEach(function (ep) {
+                var p = ep.querySelector("[data-open-path]");
+                ep.classList.toggle("active", !!p && p.getAttribute("data-open-path") === BEND.currentPath);
+            });
+        }
+
+        function markActiveRequest() {
+            document.querySelectorAll("#reqScroll .req").forEach(function (r) {
+                r.classList.toggle("active", r.getAttribute("data-open-request") === BEND.requestId);
+            });
+        }
+
+        // --- AJAX navigation: swap only the columns that change, so the endpoint
+        //     sidebar (and, when only the detail changes, the request list) keep
+        //     their scroll position and filter instead of the page reloading. ---
+        var navToken = 0;
+        function navigateTo(url, push, detailOnly) {
+            var token = ++navToken;
+            fetch(url, {headers: {"X-Requested-With": "fetch"}}).then(function (r) {
+                return r.text().then(function (html) { return {html: html, url: r.url}; });
+            }).then(function (res) {
+                if (token !== navToken) { return; }
+                var doc = new DOMParser().parseFromString(res.html, "text/html");
+                var newInspector = doc.querySelector(".inspector");
+                var newList = doc.querySelector(".col.list");
+                var newDetail = doc.querySelector(".col.detail");
+                var live = document.querySelector(".inspector");
+                if (!newInspector || !newDetail || !live) { window.location = url; return; }
+
+                ["data-current-path", "data-request-id", "data-request-total", "data-has-more", "data-uri"].forEach(function (a) {
+                    live.setAttribute(a, newInspector.getAttribute(a) || "");
+                });
+                refreshBend();
+
+                var curDetail = document.querySelector(".col.detail");
+                if (curDetail) { curDetail.replaceWith(document.importNode(newDetail, true)); }
+                initDetail();
+
+                if (!detailOnly && newList) {
+                    var curList = document.querySelector(".col.list");
+                    if (curList) { curList.replaceWith(document.importNode(newList, true)); }
+                    initList();
+                    markActiveEndpoint();
+                } else {
+                    markActiveRequest();
                 }
-            }
 
-            let openReadme = document.getElementById("openReadme");
-            openReadme.onclick = () => {
-                window.open('/readme');
+                var target = document.getElementById("targetUrl");
+                if (target) { target.value = "http://localhost:8080" + (live.getAttribute("data-uri") || ""); }
+
+                if (doc.title) { document.title = doc.title; }
+                if (push) { history.pushState({detailOnly: !!detailOnly}, "", res.url || url); }
+            }).catch(function () { window.location = url; });
+        }
+
+        window.addEventListener("popstate", function () { navigateTo(location.href, false, false); });
+
+        // --- global click delegation ---
+        document.addEventListener("click", function (e) {
+            var openPath = e.target.closest("[data-open-path]");
+            if (openPath) { e.preventDefault(); navigateTo(pageUrl(openPath.getAttribute("data-open-path")), true, false); return; }
+            var openReq = e.target.closest("[data-open-request]");
+            if (openReq) { e.preventDefault(); navigateTo(pageUrl(BEND.currentPath, openReq.getAttribute("data-open-request")), true, true); return; }
+            var delPath = e.target.closest("[data-del-path]");
+            if (delPath) { e.stopPropagation(); confirmDeletePath(delPath.getAttribute("data-del-path")); return; }
+            var close = e.target.closest("[data-close-modal]");
+            if (close) { closeModal(close.getAttribute("data-close-modal")); return; }
+        });
+
+        // --- endpoint filter (sidebar, persistent) ---
+        var epSearch = document.getElementById("epSearch");
+        if (epSearch) {
+            epSearch.addEventListener("input", function () {
+                var q = epSearch.value.toLowerCase();
+                document.querySelectorAll(".endpoints .ep").forEach(function (row) {
+                    var path = row.querySelector(".ep-path");
+                    var text = path ? path.textContent.toLowerCase() : "";
+                    row.style.display = (!q || text.indexOf(q) !== -1) ? "" : "none";
+                });
+            });
+        }
+
+        // --- live tail via Server-Sent Events ---
+        function bumpEndpoint(path) {
+            var count = null;
+            document.querySelectorAll(".endpoints .ep-count").forEach(function (el) {
+                if (el.getAttribute("data-open-path") === path) { count = el; }
+            });
+            if (count) { count.textContent = String((parseInt(count.textContent, 10) || 0) + 1); return; }
+            var epScroll = document.querySelector(".endpoints .scroll");
+            if (!epScroll) { return; }
+            var empty = epScroll.querySelector(".col-empty");
+            if (empty) { empty.remove(); }
+            var ep = document.createElement("div");
+            ep.className = "ep";
+            ep.innerHTML = '<span class="ep-path" data-open-path="' + esc(path) + '">' + esc(path) + '</span>' +
+                '<span class="ep-count" data-open-path="' + esc(path) + '">1</span>';
+            epScroll.appendChild(ep);
+        }
+
+        function prependRequest(ev) {
+            var scroll = document.getElementById("reqScroll");
+            if (!scroll) { return; }
+            var empty = scroll.querySelector(".col-empty");
+            if (empty) { empty.remove(); }
+            var row = document.createElement("div");
+            row.className = "req new";
+            row.setAttribute("data-open-request", ev.id);
+            row.innerHTML =
+                '<span class="method m-' + esc(ev.method) + '">' + esc(ev.method) + '</span>' +
+                '<div class="req-mid"><div class="req-time">' + esc(ev.timestamp) + '</div><div class="req-id">#' + esc(ev.id) + '</div></div>' +
+                '<span class="status ' + statusClass(ev.status) + '">' + (ev.status ? esc(ev.status) : "—") + '</span>';
+            scroll.insertBefore(row, scroll.firstChild);
+            setTimeout(function () { row.classList.remove("new"); }, 1700);
+            loadedCount++;
+            BEND.requestTotal++;
+            updateNote();
+        }
+
+        if (window.EventSource) {
+            var es = new EventSource("/api/events");
+            es.onmessage = function (e) {
+                var ev;
+                try { ev = JSON.parse(e.data); } catch (x) { return; }
+                if (!ev || !ev.path) { return; }
+                bumpEndpoint(ev.path);
+                if (ev.path === BEND.currentPath && !paused) { prependRequest(ev); }
             };
         }
 
-        window.onload = init;
-
-    </script>
-</head>
-
-<body>
-<div class="page-header">
-    <p class="page-header-title">Bend</p>
-    <button id="openReadme">?</button>
-</div>
-
-<div style="width: 100%">
-    <table class="table-style">
-        <tr>
-            <th>Request Count</th>
-            <th>Path</th>
-            <th></th>
-        </tr>
-        {{ with .Paths }}
-        {{ range . }}
-        <tr>
-            <td onclick="openPath({{.Path}})">{{.Count}}</td>
-            <td onclick="openPath({{.Path}})">{{.Path}}</td>
-            <td onclick="deletePath({{.Path}})"><i class="gg-trash"></i></td>
-        </tr>
-        {{ end }}
-        {{ end }}
-    </table>
-
-    <div class="table-style" style="width: 100%">
-        <h1>{{ .CurrentPath }}</h1>
-
-        <select class="select-css" id="requestId" onchange="openRequest()">
-            {{ with .Requests }}
-            {{ range . }}
-                <option value="{{ .ID }}">{{ .Timestamp }}</option>
-            {{ end }}
-            {{ end }}
-        </select>
-
-        <div>
-            <button class="button" style="width: 200px;" id="sendRequestOpenPopupBtn">Send Request to custom url</button>
-            <button class="button" style="width: 200px;" onclick="deleteRequest()">Delete Request</button>
-        </div>
-
-        {{ with .RequestDetails }}
-        <table class="request-details-style">
-                <tr>
-                    <td>Timestamp</td>
-                    <td>{{.Timestamp}}</td>
-                </tr>
-                <tr>
-                    <td>Host</td>
-                    <td>{{.Host}}</td>
-                </tr>
-                <tr>
-                    <td>Uri</td>
-                    <td>{{.Uri}}</td>
-                </tr>
-                <tr>
-                    <td>Method</td>
-                    <td>{{.Method}}</td>
-                </tr>
-                <tr>
-                    <td>Body</td>
-                    <td>{{.Body}}</td>
-                </tr>
-                <tr>
-                    <td>Header</td>
-                    <td>
-                        <table style = "width: 500px;">
-                            {{ range $key, $value := .Header }}
-                            <tr>
-                                <td>{{ $key }}</td>
-                                <td>{{ $value }}</td>
-                            </tr>
-                            {{ end }}
-                        </table>
-
-                    </td>
-                </tr>
-        </table>
-        {{ if .Response }}
-        <h2>Returned Response</h2>
-        <table class="request-details-style">
-            <tr>
-                <td>Target Host</td>
-                <td>{{ .Response.Target }}</td>
-            </tr>
-            <tr>
-                <td>StatusCode</td>
-                <td>{{ .Response.ResponseStatusCode }}</td>
-            </tr>
-            <tr>
-                <td>Body</td>
-                <td>{{ .Response.ResponseBody }}</td>
-            </tr>
-
-            {{ if .Response.Error }}
-            <tr>
-                <td>Error</td>
-                <td>{{ .Response.Error }}</td>
-            </tr>
-            {{ end }}
-
-            <tr>
-                <td>Header</td>
-                <td>
-                    <table style="width: 500px;">
-                        {{ range $key, $value := .Response.ResponseHeader }}
-                        <tr>
-                            <td>{{ $key }}</td>
-                            <td>{{ $value }}</td>
-                        </tr>
-                        {{ end }}
-                    </table>
-                </td>
-            </tr>
-        </table>
-        {{ end }}
-        {{ end }}
-    </div>
-
-</div>
-
-<div id="sendRequestPopup" class="modal">
-    <!-- Modal content -->
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <p>Enter custom url to send this request to</p>
-        <input style="width: 100%" type="text" id="requestTargetUrl" value="http://localhost:8080{{ .RequestDetails.Uri }}">
-        <button class="largeButton" onclick="sendRequest()">Send</button>
-    </div>
-
-</div>
-
+        // --- bootstrap ---
+        refreshBend();
+        initList();
+        initDetail();
+    })();
+</script>
 </body>
+</html>

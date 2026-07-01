@@ -1,88 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta charset="utf-8"/>
-
-    <style>
-        .center {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 200px;
-        }
-    </style>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css?v=0.6.5"/>
+    <title>bend — Login</title>
     <script>
         // redirect if logged in and origin is given
         {{if and .Origin .Name }}
-            window.location = {{ .Origin }}
+        window.location = {{ .Origin }};
         {{end}}
     </script>
-
-    <title></title>
 </head>
-
 <body>
-
-{{if .Name }}
-    <form class="center">
-        <div class="content-group">
-            <div class="label-column">{{ .Name }}</div>
-            {{/* hidden field to know that this is a logout */}}
-            <input type="hidden" name="logout" value="true" />
-            <input class="theme-button" type="submit" value="Logout">
-        </div>
+<div class="login-wrap">
+    {{if .Name }}
+    <form class="login-card" method="post" action="/login">
+        <div class="brand">bend<span class="dot">.</span></div>
+        <div class="sub">Angemeldet als {{ .Name }}</div>
+        <input type="hidden" name="logout" value="true"/>
+        <button class="btn block" type="submit">Logout</button>
     </form>
-{{else}}
-    <form class="center">
-        <div class="content-group">
-            <table style="table-layout: fixed">
-                <tr>
-                    <td class="label-column">
-                        <label for="username">Username</label>
-                    </td>
-                    <td class="input-column">
-                        <input style="width: 100%;" type="text" id="username" name="username" />
-                    </td>
-                </tr>
-                <tr>
-                    <td class="label-column">
-                        <label for="password">Password</label>
-                    </td>
-                    <td class="input-column">
-                        <input style="width: 100%;" type="password" id="password" name="password" required/>
-                    </td>
-                </tr>
+    {{else}}
+    <form class="login-card" method="post" action="/login">
+        <div class="brand">bend<span class="dot">.</span></div>
+        <div class="sub">Bitte anmelden</div>
 
-                {{ if .Error }}
-                <tr>
-                    <td class="label-column">
-                    </td>
-                    <td class="input-column">
-                        <div style="color: red;">{{ .Error }}</div>
-                    </td>
-                </tr>
-                {{ end }}
-
-                <tr>
-                    <td class="label-column">
-                    </td>
-                    <td class="input-column">
-                        <input style="width: 100%;" class="theme-button" type="submit" value="Login">
-                    </td>
-                </tr>
-
-            </table>
+        <div class="field">
+            <label for="username">Benutzername</label>
+            <input class="input" type="text" id="username" name="username" autocomplete="username"/>
+        </div>
+        <div class="field">
+            <label for="password">Passwort</label>
+            <input class="input" type="password" id="password" name="password" autocomplete="current-password" required/>
         </div>
 
-        {{/* hidden field for keeping origin information */}}
-        <input type="hidden" name="origin" value="{{ .Origin }}" />
+        {{ if .Error }}
+        <div class="login-error">{{ .Error }}</div>
+        {{ end }}
 
-
+        <input type="hidden" name="origin" value="{{ .Origin }}"/>
+        <button class="btn primary block" type="submit">Login</button>
     </form>
-{{end}}
-
+    {{end}}
+</div>
 </body>
-
 </html>

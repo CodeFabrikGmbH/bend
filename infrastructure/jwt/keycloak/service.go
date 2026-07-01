@@ -6,7 +6,7 @@ import (
 	"code-fabrik.com/bend/infrastructure/jwt/jwks"
 	"context"
 	"fmt"
-	"github.com/Nerzal/gocloak/v7"
+	"github.com/Nerzal/gocloak/v13"
 	"net/http"
 	"time"
 )
@@ -61,12 +61,20 @@ func (k *Service) Authenticate(w http.ResponseWriter, r *http.Request) (*authent
 	return k.BuildUserFromOIDCResponse(r.Context(), w, accessCookie.Value, refreshCookie.Value)
 }
 
+// newClient builds a gocloak client. The Keycloak server still uses the legacy
+// "/auth" path prefix, which gocloak v13 no longer applies by default, so we
+// restore it explicitly. KEYCLOAK_HOST stays the bare host without "/auth"
+// (see jwks.jwksUrl, which hardcodes the same prefix).
+func (k *Service) newClient() *gocloak.GoCloak {
+	return gocloak.NewClient(k.config.HostName, gocloak.SetLegacyWildFlySupport())
+}
+
 func (k *Service) BuildUserFromOIDCResponse(ctx context.Context, w http.ResponseWriter, accessToken, refreshToken string) (*authentication.User, error) {
 	if len(accessToken) == 0 {
 		return nil, fmt.Errorf("access token undefined")
 	}
 
-	client := gocloak.NewClient(k.config.HostName)
+	client := k.newClient()
 
 	if userInfo, err := client.GetUserInfo(ctx, accessToken, k.config.Realm); err == nil {
 		return k.newUser(userInfo)
@@ -81,7 +89,7 @@ func (k *Service) BuildUserFromOIDCResponse(ctx context.Context, w http.Response
 }
 
 func (k *Service) Login(ctx context.Context, w http.ResponseWriter, username, password string) (*authentication.User, error) {
-	client := gocloak.NewClient(k.config.HostName)
+	client := k.newClient()
 
 	jwt, err := client.Login(ctx, k.config.ClientId, k.config.ClientSecret, k.config.Realm, username, password)
 	if err != nil {
@@ -91,7 +99,7 @@ func (k *Service) Login(ctx context.Context, w http.ResponseWriter, username, pa
 	return k.handleNewJWT(ctx, w, err, client, jwt)
 }
 
-func (k *Service) handleNewJWT(ctx context.Context, w http.ResponseWriter, err error, client gocloak.GoCloak, jwt *gocloak.JWT) (*authentication.User, error) {
+func (k *Service) handleNewJWT(ctx context.Context, w http.ResponseWriter, err error, client *gocloak.GoCloak, jwt *gocloak.JWT) (*authentication.User, error) {
 	userInfo, err := client.GetUserInfo(ctx, jwt.AccessToken, k.config.Realm)
 	if err != nil {
 		return nil, err
@@ -114,19 +122,53 @@ func (k *Service) saveTokenAsCookie(token *gocloak.JWT, w http.ResponseWriter) e
 		return fmt.Errorf("token undefined")
 	}
 
-	accessCookie := http.Cookie{Path: "/", Name: "access", Value: token.AccessToken, Expires: time.Now().Add(365 * 24 * time.Hour)}
+	accessCookie := http.Cookie{
+		Path:     "/",
+		Name:     "access",
+		Value:    token.AccessToken,
+		Expires:  time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
+		HttpOnly: true,
+		Secure:   env.COOKIE_SECURE,
+		SameSite: http.SameSiteLaxMode,
+	}
 	http.SetCookie(w, &accessCookie)
 
-	refreshCookie := http.Cookie{Path: "/", Name: "refresh", Value: token.RefreshToken, Expires: time.Now().Add(365 * 24 * time.Hour)}
+	refreshCookie := http.Cookie{
+		Path:     "/",
+		Name:     "refresh",
+		Value:    token.RefreshToken,
+		Expires:  time.Now().Add(time.Duration(token.RefreshExpiresIn) * time.Second),
+		HttpOnly: true,
+		Secure:   env.COOKIE_SECURE,
+		SameSite: http.SameSiteLaxMode,
+	}
 	http.SetCookie(w, &refreshCookie)
 	return nil
 }
 
 func (k *Service) deleteCookies(w http.ResponseWriter) {
-	accessCookie := http.Cookie{Path: "/", Name: "access", Value: "", Expires: time.Unix(0, 0)}
+	accessCookie := http.Cookie{
+		Path:     "/",
+		Name:     "access",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   env.COOKIE_SECURE,
+		SameSite: http.SameSiteLaxMode,
+	}
 	http.SetCookie(w, &accessCookie)
 
-	refreshCookie := http.Cookie{Path: "/", Name: "refresh", Value: "", Expires: time.Unix(0, 0)}
+	refreshCookie := http.Cookie{
+		Path:     "/",
+		Name:     "refresh",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   env.COOKIE_SECURE,
+		SameSite: http.SameSiteLaxMode,
+	}
 	http.SetCookie(w, &refreshCookie)
 }
 

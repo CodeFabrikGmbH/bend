@@ -1,0 +1,919 @@
+<title>bend — UI/UX-Konzept</title>
+<style>
+  :root {
+    --bg:      #0e1116;
+    --bg-2:    #151a21;
+    --bg-3:    #1b212a;
+    --bg-hover:#20283200;
+    --line:    #242c37;
+    --line-2:  #313b49;
+    --txt:     #e7ebf0;
+    --muted:   #8a95a3;
+    --faint:   #5b6472;
+    --accent:  #34c3d6;
+    --accent-2:#1b93a6;
+    --accent-ink:#04161a;
+
+    --get:    #4cc38a;
+    --post:   #57a5e6;
+    --put:    #e0a648;
+    --patch:  #b183e0;
+    --delete: #e5687a;
+
+    --ok:   #4cc38a;
+    --warn: #e0a648;
+    --err:  #e5687a;
+    --info: #57a5e6;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    --r: 7px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--txt);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .app {
+    display: grid;
+    grid-template-rows: 52px 1fr;
+    height: 100vh;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 16px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: -0.02em;
+  }
+  .brand .dot { color: var(--accent); }
+  .brand .tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faint);
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  .nav { display: flex; gap: 2px; }
+  .nav button {
+    font: inherit;
+    font-size: 13px;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    padding: 6px 12px;
+    border-radius: var(--r);
+    cursor: pointer;
+  }
+  .nav button:hover { color: var(--txt); background: var(--bg-3); }
+  .nav button.active { color: var(--txt); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-2); }
+
+  .catchurl {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    padding: 5px 6px 5px 10px;
+    max-width: 360px;
+  }
+  .catchurl .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--faint);
+  }
+  .catchurl code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .iconbtn {
+    font: inherit;
+    background: none;
+    border: 0;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 5px;
+    padding: 3px 6px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .iconbtn:hover { background: var(--bg-3); color: var(--txt); }
+
+  .avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--accent-ink);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* ---------- Main grid ---------- */
+  .main { min-height: 0; }
+
+  .inspector {
+    display: grid;
+    grid-template-columns: 240px 350px 1fr;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .col { min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .col.endpoints { background: var(--bg-2); border-right: 1px solid var(--line); }
+  .col.list      { background: var(--bg); border-right: 1px solid var(--line); }
+  .col.detail    { background: var(--bg); }
+
+  .col-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    min-height: 46px;
+  }
+  .col-head h2 {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .count-pill {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg-3);
+    border-radius: 20px;
+    padding: 1px 8px;
+  }
+
+  .scroll { overflow-y: auto; flex: 1; min-height: 0; }
+  .scroll::-webkit-scrollbar { width: 10px; }
+  .scroll::-webkit-scrollbar-thumb { background: #2a323d; border-radius: 6px; border: 3px solid transparent; background-clip: padding-box; }
+  .scroll::-webkit-scrollbar-thumb:hover { background: #3a4550; background-clip: padding-box; border: 3px solid transparent; }
+
+  /* ---------- Endpoints list ---------- */
+  .ep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+  }
+  .ep:hover { background: var(--bg-3); }
+  .ep.active { background: var(--bg-3); border-left-color: var(--accent); }
+  .ep .ep-main { min-width: 0; flex: 1; }
+  .ep .ep-path {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--txt);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ep.active .ep-path { color: #fff; }
+  .ep .ep-sub {
+    font-size: 11px;
+    color: var(--faint);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ep .ep-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: #0d1117;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 0 7px;
+    line-height: 18px;
+  }
+  .badge-regex {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+    color: var(--patch);
+    border: 1px solid color-mix(in srgb, var(--patch) 40%, transparent);
+    border-radius: 3px; padding: 0 4px; text-transform: uppercase;
+  }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 70%, transparent);
+    animation: pulse 2s infinite;
+    flex: none;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); }
+    70%  { box-shadow: 0 0 0 6px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+
+  .ep-add {
+    margin: 10px 14px;
+    padding: 8px;
+    text-align: center;
+    border: 1px dashed var(--line-2);
+    border-radius: var(--r);
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .ep-add:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Request list ---------- */
+  .listtools {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .search {
+    flex: 1;
+    display: flex; align-items: center; gap: 7px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    padding: 5px 9px;
+  }
+  .search input {
+    background: none; border: 0; color: var(--txt);
+    font-family: var(--mono); font-size: 12px; width: 100%; outline: none;
+  }
+  .search svg { color: var(--faint); flex: none; }
+
+  .live-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600;
+    color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
+    border-radius: 20px; padding: 4px 10px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .live-toggle.paused { color: var(--muted); background: var(--bg-3); border-color: var(--line); }
+  .live-toggle .live-dot { animation: pulse 2s infinite; }
+  .live-toggle.paused .live-dot { background: var(--faint); animation: none; }
+
+  .req {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    border-bottom: 1px solid #191f27;
+    cursor: pointer;
+  }
+  .req:hover { background: var(--bg-2); }
+  .req.active { background: var(--bg-3); }
+  .req.active::before {
+    content: ""; position: absolute; left: 0; width: 2px; height: 100%;
+    background: var(--accent);
+  }
+  .req { position: relative; }
+
+  .method {
+    font-family: var(--mono);
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em;
+    text-align: center;
+  }
+  .m-GET    { color: var(--get); }
+  .m-POST   { color: var(--post); }
+  .m-PUT    { color: var(--put); }
+  .m-PATCH  { color: var(--patch); }
+  .m-DELETE { color: var(--delete); }
+
+  .req-mid { min-width: 0; }
+  .req-path {
+    font-family: var(--mono); font-size: 12.5px; color: var(--txt);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .req-meta { font-size: 11px; color: var(--faint); display: flex; gap: 8px; }
+  .req-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+
+  .status {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    border-radius: 4px; padding: 1px 6px;
+  }
+  .s-2 { color: var(--ok);   background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .s-3 { color: var(--info); background: color-mix(in srgb, var(--info) 14%, transparent); }
+  .s-4 { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+  .s-5 { color: var(--err);  background: color-mix(in srgb, var(--err) 16%, transparent); }
+
+  .req-time { font-family: var(--mono); font-size: 10.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  @keyframes flyin {
+    from { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+    to   { background: transparent; }
+  }
+  .req.new { animation: flyin 1.6s ease-out; }
+
+  /* ---------- Detail ---------- */
+  .detail-empty, .empty {
+    flex: 1; display: grid; place-items: center; text-align: center; color: var(--faint);
+    padding: 40px;
+  }
+  .empty .big { font-size: 15px; color: var(--muted); margin-bottom: 6px; }
+
+  .detail-head { padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .detail-title { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .detail-title .method { font-size: 13px; min-width: 46px; }
+  .detail-title .p {
+    font-family: var(--mono); font-size: 14px; color: #fff; word-break: break-all;
+  }
+  .detail-sub {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    font-size: 11.5px; color: var(--muted);
+  }
+  .detail-sub b { color: var(--txt); font-weight: 600; }
+
+  .actions { display: flex; gap: 8px; margin-top: 13px; flex-wrap: wrap; }
+  .btn {
+    font: inherit; font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 13px; border-radius: var(--r); cursor: pointer;
+    border: 1px solid var(--line-2); background: var(--bg-3); color: var(--txt);
+  }
+  .btn:hover { border-color: var(--faint); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.primary:hover { background: #45d3e6; }
+  .btn.danger { color: var(--err); }
+  .btn.danger:hover { border-color: var(--err); background: color-mix(in srgb, var(--err) 12%, transparent); }
+
+  .tabs { display: flex; gap: 2px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); }
+  .tab {
+    font: inherit; font-size: 12.5px; font-weight: 600; color: var(--muted);
+    background: none; border: 0; border-bottom: 2px solid transparent;
+    padding: 7px 12px 10px; cursor: pointer;
+  }
+  .tab:hover { color: var(--txt); }
+  .tab.active { color: var(--txt); border-bottom-color: var(--accent); }
+  .tab .n { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-left: 5px; }
+
+  .pane { padding: 16px 18px; }
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--faint); margin: 0 0 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label + .section-label { margin-top: 22px; }
+
+  .code {
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.65;
+    background: #0a0d12; border: 1px solid var(--line); border-radius: var(--r);
+    padding: 13px 15px; overflow-x: auto; white-space: pre;
+    color: #cdd6e0; position: relative;
+  }
+  .code .k { color: var(--accent); }
+  .code .s { color: var(--get); }
+  .code .n { color: var(--put); }
+  .code .b { color: var(--patch); }
+  .copy-inline {
+    position: absolute; top: 8px; right: 8px;
+    font-size: 10px; color: var(--muted); background: var(--bg-3);
+    border: 1px solid var(--line); border-radius: 5px; padding: 3px 7px; cursor: pointer;
+  }
+  .copy-inline:hover { color: var(--txt); border-color: var(--line-2); }
+
+  table.headers { width: 100%; border-collapse: collapse; }
+  table.headers td {
+    font-family: var(--mono); font-size: 12px; padding: 6px 10px;
+    border-bottom: 1px solid #191f27; vertical-align: top;
+  }
+  table.headers td.h-key { color: var(--accent); width: 38%; white-space: nowrap; }
+  table.headers td.h-val { color: var(--txt); word-break: break-all; }
+
+  .resp-banner {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: var(--r); padding: 10px 13px; margin-bottom: 16px;
+  }
+  .resp-banner .target { font-family: var(--mono); font-size: 12px; color: var(--muted); word-break: break-all; }
+  .mock-tag {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--put); border: 1px solid color-mix(in srgb, var(--put) 40%, transparent);
+    border-radius: 4px; padding: 1px 6px;
+  }
+
+  /* ---------- Endpoints editor view ---------- */
+  .editor { display: grid; grid-template-columns: 300px 1fr; height: 100%; min-height: 0; }
+  .editor .col.list { border-right: 1px solid var(--line); background: var(--bg-2); }
+  .form { padding: 22px 26px; overflow-y: auto; max-width: 760px; }
+  .form h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .form .lead { color: var(--muted); margin: 0 0 22px; font-size: 12.5px; }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+  .field .hint { font-size: 11.5px; color: var(--faint); margin-top: 5px; }
+  .input, .textarea {
+    width: 100%; font-family: var(--mono); font-size: 13px; color: var(--txt);
+    background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 9px 11px; outline: none;
+  }
+  .input:focus, .textarea:focus { border-color: var(--accent); }
+  .textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .tester {
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 14px; margin-top: 6px;
+  }
+  .tester .t-row { display: flex; gap: 10px; align-items: center; }
+  .tester .input { flex: 1; }
+  .t-result { margin-top: 10px; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .t-match { color: var(--ok); }
+  .t-nomatch { color: var(--err); }
+
+  /* ---------- Toasts ---------- */
+  .toasts {
+    position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px;
+    z-index: 100;
+  }
+  .toast {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg-2); border: 1px solid var(--line-2);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--r); padding: 11px 15px; min-width: 240px; max-width: 340px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    animation: toastin 0.3s cubic-bezier(0.2,0.8,0.2,1);
+  }
+  .toast.ok  { border-left-color: var(--ok); }
+  .toast.err { border-left-color: var(--err); }
+  .toast .tt { font-weight: 600; font-size: 12.5px; }
+  .toast .td { font-size: 11.5px; color: var(--muted); }
+  @keyframes toastin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .hide { display: none !important; }
+
+  /* ---------- Responsive ---------- */
+  .mob-back { display: none; }
+  @media (max-width: 900px) {
+    .inspector { grid-template-columns: 1fr; }
+    .inspector .col { display: none; }
+    .inspector[data-mob="endpoints"] .endpoints,
+    .inspector[data-mob="list"] .list,
+    .inspector[data-mob="detail"] .detail { display: flex; }
+    .mob-back { display: inline-flex; }
+    .catchurl { max-width: 150px; }
+    .editor { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; }
+  }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">bend<span class="dot">.</span><span class="tag">inspector</span></div>
+    <nav class="nav">
+      <button class="active" data-view="requests">Requests</button>
+      <button data-view="endpoints">Endpoints</button>
+      <button data-view="docs">Docs</button>
+    </nav>
+    <div class="catchurl" title="Basis-URL für eingehende Requests — kopieren und als Webhook-Ziel eintragen">
+      <span class="label">Catch&nbsp;URL</span>
+      <code id="catchurl">https://bend.acme.dev</code>
+      <button class="iconbtn" id="copyCatch" aria-label="Catch-URL kopieren">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+      </button>
+    </div>
+    <div class="avatar" id="avatar" title="Sebastian Koch — abmelden">SK</div>
+  </header>
+
+  <main class="main">
+    <!-- ============ REQUESTS VIEW ============ -->
+    <div class="inspector" id="requestsView" data-mob="endpoints">
+
+      <!-- Column 1: endpoints -->
+      <section class="col endpoints">
+        <div class="col-head">
+          <h2>Endpoints</h2>
+          <span class="count-pill" id="epTotal"></span>
+        </div>
+        <div class="scroll" id="epList"></div>
+        <div class="ep-add" data-view="endpoints">+ Endpoint anlegen</div>
+      </section>
+
+      <!-- Column 2: request list -->
+      <section class="col list">
+        <div class="col-head">
+          <button class="iconbtn mob-back" data-mob="endpoints" aria-label="Zurück">‹</button>
+          <h2 id="listTitle">Requests</h2>
+        </div>
+        <div class="listtools">
+          <div class="search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="search" placeholder="Filter: method, status, body …">
+          </div>
+          <button class="live-toggle" id="liveToggle"><span class="live-dot"></span>Live</button>
+        </div>
+        <div class="scroll" id="reqList"></div>
+      </section>
+
+      <!-- Column 3: detail -->
+      <section class="col detail">
+        <div class="col-head">
+          <button class="iconbtn mob-back" data-mob="list" aria-label="Zurück">‹</button>
+          <h2>Detail</h2>
+        </div>
+        <div id="detail" class="scroll"></div>
+      </section>
+    </div>
+
+    <!-- ============ ENDPOINTS EDITOR VIEW ============ -->
+    <div class="editor hide" id="endpointsView">
+      <section class="col list">
+        <div class="col-head"><h2>Endpoints</h2><span class="count-pill" id="epTotal2"></span></div>
+        <div class="scroll" id="epList2"></div>
+        <div class="ep-add" id="newEp">+ Endpoint anlegen</div>
+      </section>
+      <div class="form">
+        <h1>/webhooks/stripe</h1>
+        <p class="lead">Regeln, was bend mit eingehenden Requests auf diesem Pfad macht — durchleiten oder eine Mock-Antwort liefern.</p>
+
+        <div class="field">
+          <label>Pfad</label>
+          <input class="input" value="/webhooks/stripe">
+          <div class="hint">Reguläre Ausdrücke erlaubt, z.&nbsp;B. <code style="color:var(--patch)">/api/aggregate/\d{4}-\d{2}-\d{2}</code></div>
+        </div>
+
+        <div class="field">
+          <label>Ziel (Target)</label>
+          <input class="input" placeholder="https://192.168.1.42:8443  — leer lassen für Mock-Antwort">
+          <div class="hint">Ist ein Ziel gesetzt, leitet bend weiter. Ist es leer, wird die Mock-Antwort unten zurückgegeben.</div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label>Mock-Statuscode</label>
+            <input class="input" value="200">
+          </div>
+          <div class="field">
+            <label>Content-Type</label>
+            <input class="input" value="application/json">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Mock-Body</label>
+          <textarea class="textarea">{
+  "received": true
+}</textarea>
+        </div>
+
+        <div class="field">
+          <label>Regex-Tester</label>
+          <div class="tester">
+            <div class="t-row">
+              <input class="input" id="testInput" value="/api/aggregate/2021-08-15" placeholder="Test-Pfad eingeben …">
+            </div>
+            <div class="t-result" id="testResult"></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" id="saveEp">Speichern</button>
+          <button class="btn danger" id="delEp">Endpoint löschen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ DOCS VIEW ============ -->
+    <div class="editor hide" id="docsView">
+      <div class="form" style="max-width:640px">
+        <h1>Was ist bend?</h1>
+        <p class="lead">Ein Request-Catcher & Mock-Proxy. Zeig einen beliebigen Webhook oder Client auf deine Catch-URL — bend fängt jeden Request ab, zeigt ihn live an und kann ihn an dein Ziel weiterleiten.</p>
+        <div class="section-label">So funktioniert's</div>
+        <p style="color:var(--muted);font-size:12.5px;line-height:1.7">1&nbsp;· Kopiere die Catch-URL oben und trage sie als Webhook-Ziel ein.<br>
+        2&nbsp;· Eingehende Requests erscheinen live in der Requests-Ansicht.<br>
+        3&nbsp;· Öffne einen Request, um Header und Body zu inspizieren.<br>
+        4&nbsp;· Über „An Ziel senden" leitest du ihn an deinen Dev-Rechner weiter.<br>
+        5&nbsp;· Unter „Endpoints" definierst du Mock-Antworten oder feste Weiterleitungsziele.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Data ----------
+  const endpoints = [
+    { path: "/webhooks/stripe", count: 1284, live: true },
+    { path: "/gh/push", count: 342, live: false },
+    { path: "/api/aggregate/\\d{4}-\\d{2}-\\d{2}", count: 87, regex: true, live: false },
+    { path: "/sms/inbound", count: 23, live: false },
+    { path: "/legacy/callback", count: 5, live: false },
+  ];
+
+  const bodyStripe = `{
+  "id": "evt_1Pm4X2K",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_3Pm4",
+      "amount": 2599,
+      "currency": "eur",
+      "status": "succeeded"
+    }
+  }
+}`;
+
+  let idc = 1000;
+  const requests = {
+    "/webhooks/stripe": [
+      { id: ++idc, m: "POST", status: 200, t: "vor 12 s", size: "1.2 KB", ua: "Stripe/1.0", body: bodyStripe, mock: false, target: "https://192.168.1.42:8443" },
+      { id: ++idc, m: "POST", status: 500, t: "vor 3 min", size: "1.2 KB", ua: "Stripe/1.0", body: bodyStripe, mock: false, target: "https://192.168.1.42:8443", err: "dial tcp: connection refused" },
+      { id: ++idc, m: "POST", status: 200, t: "vor 8 min", size: "980 B", ua: "Stripe/1.0", body: bodyStripe, mock: true },
+      { id: ++idc, m: "POST", status: 200, t: "vor 21 min", size: "1.1 KB", ua: "Stripe/1.0", body: bodyStripe, mock: true },
+      { id: ++idc, m: "GET",  status: 200, t: "vor 34 min", size: "0 B", ua: "curl/8.4", body: "", mock: true },
+      { id: ++idc, m: "POST", status: 404, t: "vor 1 h", size: "1.2 KB", ua: "Stripe/1.0", body: bodyStripe, mock: true },
+    ],
+    "/gh/push": [
+      { id: ++idc, m: "POST", status: 200, t: "vor 5 min", size: "8.4 KB", ua: "GitHub-Hookshot", body: '{\n  "ref": "refs/heads/main",\n  "pusher": { "name": "skoch" }\n}', mock: true },
+      { id: ++idc, m: "POST", status: 200, t: "vor 40 min", size: "7.9 KB", ua: "GitHub-Hookshot", body: '{\n  "ref": "refs/heads/dev"\n}', mock: true },
+    ],
+    "/api/aggregate/\\d{4}-\\d{2}-\\d{2}": [
+      { id: ++idc, m: "GET", status: 200, t: "vor 2 h", size: "512 B", ua: "internal-cron", body: "", mock: false, target: "https://target.host" },
+    ],
+    "/sms/inbound": [
+      { id: ++idc, m: "POST", status: 200, t: "vor 6 h", size: "340 B", ua: "Twilio", body: 'From=%2B491700000000&Body=Hallo', mock: true },
+    ],
+    "/legacy/callback": [
+      { id: ++idc, m: "PUT", status: 301, t: "gestern", size: "120 B", ua: "LegacyClient/0.9", body: "", mock: true },
+    ],
+  };
+
+  // ---------- State ----------
+  let activeEp = endpoints[0].path;
+  let activeReq = requests[activeEp][0].id;
+  let filter = "";
+  let liveTimer = null;
+  let liveTab = "request";
+
+  // ---------- Helpers ----------
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const statusClass = (s) => "s-" + String(s)[0];
+
+  function highlightJson(str) {
+    if (!str) return '<span style="color:var(--faint)">(kein Body)</span>';
+    let s = esc(str);
+    s = s.replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:');
+    s = s.replace(/: "([^"]*)"/g, ': <span class="s">"$1"</span>');
+    s = s.replace(/: (\d+\.?\d*)/g, ': <span class="n">$1</span>');
+    s = s.replace(/: (true|false|null)/g, ': <span class="b">$1</span>');
+    return s;
+  }
+
+  function toast(title, desc, kind) {
+    const el = document.createElement("div");
+    el.className = "toast " + (kind || "");
+    el.innerHTML = '<div><div class="tt">' + esc(title) + '</div>' + (desc ? '<div class="td">' + esc(desc) + '</div>' : '') + '</div>';
+    $("#toasts").appendChild(el);
+    setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .3s"; }, 3200);
+    setTimeout(() => el.remove(), 3600);
+  }
+
+  // ---------- Renderers ----------
+  function renderEndpoints() {
+    const total = endpoints.reduce((a, e) => a + e.count, 0);
+    $("#epTotal").textContent = total.toLocaleString("de-DE");
+    const html = endpoints.map((e) => {
+      const active = e.path === activeEp ? " active" : "";
+      const display = e.regex ? e.path : e.path;
+      return (
+        '<div class="ep' + active + '" data-ep="' + esc(e.path) + '">' +
+          '<div class="ep-main">' +
+            '<div class="ep-path">' + esc(display) + '</div>' +
+            '<div class="ep-sub">' +
+              (e.regex ? '<span class="badge-regex">regex</span>' : '') +
+              (e.live ? '<span class="live-dot"></span> aktiv' : 'inaktiv') +
+            '</div>' +
+          '</div>' +
+          '<span class="ep-count">' + e.count.toLocaleString("de-DE") + '</span>' +
+        '</div>'
+      );
+    }).join("");
+    $("#epList").innerHTML = html;
+    $("#epList2").innerHTML = html;
+    $("#epTotal2").textContent = total.toLocaleString("de-DE");
+  }
+
+  function renderReqList() {
+    const list = requests[activeEp] || [];
+    $("#listTitle").textContent = activeEp.length > 22 ? activeEp.slice(0, 22) + "…" : activeEp;
+    const f = filter.toLowerCase();
+    const shown = list.filter((r) =>
+      !f || r.m.toLowerCase().includes(f) || String(r.status).includes(f) || (r.body || "").toLowerCase().includes(f)
+    );
+    if (!shown.length) {
+      $("#reqList").innerHTML = '<div class="empty"><div><div class="big">Noch nichts gefangen</div>Sobald ein Request eintrifft, erscheint er hier — live.</div></div>';
+      return;
+    }
+    $("#reqList").innerHTML = shown.map((r) => {
+      const active = r.id === activeReq ? " active" : "";
+      const isnew = r._new ? " new" : "";
+      return (
+        '<div class="req' + active + isnew + '" data-req="' + r.id + '">' +
+          '<div class="method m-' + r.m + '">' + r.m + '</div>' +
+          '<div class="req-mid">' +
+            '<div class="req-path">' + esc(activeEp) + '</div>' +
+            '<div class="req-meta"><span>' + r.size + '</span><span>' + esc(r.ua) + '</span></div>' +
+          '</div>' +
+          '<div class="req-right">' +
+            '<span class="status ' + statusClass(r.status) + '">' + r.status + '</span>' +
+            '<span class="req-time">' + r.t + '</span>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function renderDetail() {
+    const list = requests[activeEp] || [];
+    const r = list.find((x) => x.id === activeReq);
+    if (!r) {
+      $("#detail").innerHTML = '<div class="detail-empty"><div><div class="empty big">Kein Request ausgewählt</div>Wähl links einen Request aus.</div></div>';
+      return;
+    }
+    const reqHeaders = [
+      ["Content-Type", r.body ? "application/json" : "text/plain"],
+      ["User-Agent", r.ua],
+      ["X-Forwarded-For", "203.0.113.24"],
+      ["Content-Length", r.size.replace(/\D/g, "") || "0"],
+    ];
+    const respBanner = r.mock
+      ? '<div class="resp-banner"><span class="mock-tag">mock</span><span class="target">Antwort von bend generiert — kein Ziel gesetzt</span></div>'
+      : '<div class="resp-banner"><span class="status ' + statusClass(r.status) + '">' + r.status + '</span><span class="target">weitergeleitet an ' + esc(r.target || "") + '</span></div>';
+
+    const reqPane =
+      '<div class="pane">' +
+        '<div class="section-label">Body</div>' +
+        '<div class="code"><button class="copy-inline" data-copy="body">Kopieren</button>' + highlightJson(r.body) + '</div>' +
+        '<div class="section-label">Header</div>' +
+        '<table class="headers">' + reqHeaders.map((h) => '<tr><td class="h-key">' + esc(h[0]) + '</td><td class="h-val">' + esc(h[1]) + '</td></tr>').join("") + '</table>' +
+      '</div>';
+
+    const respBody = r.err
+      ? '<span style="color:var(--err)">✕ ' + esc(r.err) + '</span>'
+      : (r.mock ? '{\n  "received": true\n}' : highlightJson(r.body));
+    const respPane =
+      '<div class="pane">' +
+        respBanner +
+        (r.err ? '' : '<div class="section-label">Response-Body</div><div class="code">' + (r.err ? respBody : (r.mock ? highlightJson('{\n  "received": true\n}') : respBody)) + '</div>') +
+        (r.err ? '<div class="code" style="color:var(--err)">Fehler beim Weiterleiten:\n' + esc(r.err) + '</div>' : '') +
+      '</div>';
+
+    $("#detail").innerHTML =
+      '<div class="detail-head">' +
+        '<div class="detail-title"><span class="method m-' + r.m + '">' + r.m + '</span><span class="p">' + esc(activeEp) + '</span></div>' +
+        '<div class="detail-sub">' +
+          '<span><b>' + r.t + '</b></span>' +
+          '<span>Status <b class="' + '">' + r.status + '</b></span>' +
+          '<span>Größe <b>' + r.size + '</b></span>' +
+          '<span>ID <b>#' + r.id + '</b></span>' +
+        '</div>' +
+        '<div class="actions">' +
+          '<button class="btn primary" data-act="forward">An Ziel senden</button>' +
+          '<button class="btn" data-act="replay">Erneut abspielen</button>' +
+          '<button class="btn" data-act="curl">Als cURL kopieren</button>' +
+          '<button class="btn danger" data-act="delete">Löschen</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="tabs">' +
+        '<button class="tab ' + (liveTab === "request" ? "active" : "") + '" data-tab="request">Request<span class="n">' + reqHeaders.length + ' hdr</span></button>' +
+        '<button class="tab ' + (liveTab === "response" ? "active" : "") + '" data-tab="response">Response<span class="n">' + r.status + '</span></button>' +
+      '</div>' +
+      (liveTab === "request" ? reqPane : respPane);
+  }
+
+  function renderAll() { renderEndpoints(); renderReqList(); renderDetail(); }
+
+  // ---------- Events ----------
+  document.addEventListener("click", (e) => {
+    const ep = e.target.closest("[data-ep]");
+    if (ep) { activeEp = ep.getAttribute("data-ep"); const l = requests[activeEp] || []; activeReq = l[0] ? l[0].id : null; liveTab = "request"; renderAll(); setMob("list"); return; }
+
+    const rq = e.target.closest("[data-req]");
+    if (rq) { activeReq = +rq.getAttribute("data-req"); liveTab = "request"; renderDetail(); setMob("detail"); return; }
+
+    const tab = e.target.closest("[data-tab]");
+    if (tab) { liveTab = tab.getAttribute("data-tab"); renderDetail(); return; }
+
+    const view = e.target.closest("[data-view]");
+    if (view) { switchView(view.getAttribute("data-view")); return; }
+
+    const mob = e.target.closest("[data-mob]");
+    if (mob) { setMob(mob.getAttribute("data-mob")); return; }
+
+    const act = e.target.closest("[data-act]");
+    if (act) { doAction(act.getAttribute("data-act")); return; }
+
+    if (e.target.closest("[data-copy]")) { toast("Body kopiert", null, "ok"); return; }
+    if (e.target.closest("#copyCatch")) { toast("Catch-URL kopiert", "https://bend.acme.dev", "ok"); return; }
+    if (e.target.closest("#avatar")) { toast("Abmelden", "Sitzung wird beendet …"); return; }
+    if (e.target.closest("#saveEp")) { toast("Endpoint gespeichert", "/webhooks/stripe", "ok"); return; }
+    if (e.target.closest("#delEp") || e.target.closest("#newEp")) { toast("Aktion", "Nur im Mockup angedeutet"); return; }
+  });
+
+  function doAction(act) {
+    if (act === "forward") toast("An Ziel gesendet", "192.168.1.42:8443 → 200 OK", "ok");
+    else if (act === "replay") toast("Erneut abgespielt", "Request wurde neu ausgeführt", "ok");
+    else if (act === "curl") toast("cURL kopiert", "In die Zwischenablage", "ok");
+    else if (act === "delete") toast("Request gelöscht", "#" + activeReq, "err");
+  }
+
+  function switchView(v) {
+    $$(".nav button").forEach((b) => b.classList.toggle("active", b.getAttribute("data-view") === v));
+    $("#requestsView").classList.toggle("hide", v !== "requests");
+    $("#endpointsView").classList.toggle("hide", v !== "endpoints");
+    $("#docsView").classList.toggle("hide", v !== "docs");
+  }
+
+  function setMob(which) { $("#requestsView").setAttribute("data-mob", which); }
+
+  $("#search").addEventListener("input", (e) => { filter = e.target.value; renderReqList(); });
+
+  // Live streaming simulation
+  const liveBodies = [bodyStripe];
+  $("#liveToggle").addEventListener("click", () => {
+    const btn = $("#liveToggle");
+    const paused = btn.classList.toggle("paused");
+    btn.childNodes[btn.childNodes.length - 1].textContent = paused ? "Pausiert" : "Live";
+    if (paused) { clearInterval(liveTimer); liveTimer = null; }
+    else startLive();
+  });
+
+  function startLive() {
+    clearInterval(liveTimer);
+    liveTimer = setInterval(() => {
+      const statuses = [200, 200, 200, 500, 404];
+      const st = statuses[Math.floor(Math.random() * statuses.length)];
+      const nr = { id: ++idc, m: "POST", status: st, t: "gerade eben", size: (0.9 + Math.random()).toFixed(1) + " KB", ua: "Stripe/1.0", body: bodyStripe, mock: st === 200 ? false : true, target: "https://192.168.1.42:8443", _new: true };
+      if (st === 500) { nr.err = "dial tcp: connection refused"; }
+      const key = "/webhooks/stripe";
+      requests[key].unshift(nr);
+      const ep = endpoints.find((x) => x.path === key); if (ep) ep.count++;
+      // relabel older times a touch
+      renderEndpoints();
+      if (activeEp === key) renderReqList();
+      toast("Neuer Request", "POST " + key + " · " + st, st >= 500 ? "err" : "");
+      setTimeout(() => { nr._new = false; }, 1700);
+    }, 4500);
+  }
+
+  // Regex tester
+  function runTest() {
+    const pattern = "/api/aggregate/\\d{4}-\\d{2}-\\d{2}";
+    const val = $("#testInput").value;
+    let ok = false;
+    try { ok = new RegExp("^" + pattern + "$").test(val); } catch (e) { ok = false; }
+    $("#testResult").innerHTML = ok
+      ? '<span class="t-match">✓ Match</span> <span style="color:var(--muted)">→ Weiterleitung an <code style="color:var(--muted)">https://target.host' + esc(val) + '</code></span>'
+      : '<span class="t-nomatch">✕ Kein Match</span> <span style="color:var(--muted)">— dieser Endpoint würde nicht greifen</span>';
+  }
+  $("#testInput").addEventListener("input", runTest);
+
+  // ---------- Init ----------
+  renderAll();
+  startLive();
+  $("#liveToggle").classList.remove("paused");
+  runTest();
+})();
+</script>

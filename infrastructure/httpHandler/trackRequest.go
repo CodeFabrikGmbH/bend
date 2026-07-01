@@ -4,10 +4,15 @@ import (
 	"code-fabrik.com/bend/application"
 	"code-fabrik.com/bend/domain/request"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log/slog"
 	"net/http"
 	"time"
 )
+
+// maxRequestBodyBytes caps how much of an incoming request body is read and
+// stored, so a single oversized upload cannot exhaust memory.
+const maxRequestBodyBytes = 10 << 20 // 10 MiB
 
 type TrackRequest struct {
 	RequestService application.RequestService
@@ -16,7 +21,7 @@ type TrackRequest struct {
 func (rs TrackRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			fmt.Println(rec)
+			slog.Error("panic in TrackRequest", "recover", rec)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -24,7 +29,12 @@ func (rs TrackRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		_ = r.Body.Close()
 	}()
-	body, _ := ioutil.ReadAll(r.Body)
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
+		return
+	}
 
 	req := request.Request{
 		Timestamp: time.Now().UnixNano(),

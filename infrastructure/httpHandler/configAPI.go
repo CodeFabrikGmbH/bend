@@ -7,7 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	"io/ioutil"
+	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,7 +22,7 @@ type ConfigAPI struct {
 func (cp ConfigAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			fmt.Println(rec)
+			slog.Error("panic in ConfigAPI", "recover", rec)
 		}
 	}()
 
@@ -38,7 +39,7 @@ func (cp ConfigAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			_ = r.Body.Close()
 		}()
-		body, _ := ioutil.ReadAll(r.Body)
+		body, _ := io.ReadAll(r.Body)
 
 		configInput := ConfigInput{}
 		err := json.Unmarshal(body, &configInput)

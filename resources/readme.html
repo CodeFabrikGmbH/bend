@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css?v=0.6.5"/>
+    <title>bend — Docs</title>
+</head>
+<body>
+<div class="app">
+    <header class="topbar">
+        <div class="brand">bend<span class="dot">.</span></div>
+        <nav class="nav">
+            <a href="/dashboard/">Requests</a>
+            <a href="/configs/">Endpoints</a>
+            <a class="active" href="/readme/">Docs</a>
+        </nav>
+        <form class="logout-form" method="post" action="/login">
+            <input type="hidden" name="logout" value="true"/>
+            <button class="logout-btn" type="submit">Logout</button>
+        </form>
+    </header>
+
+    <div class="readme-wrap">
+        <article class="readme">
+            {{ .Content }}
+        </article>
+    </div>
+</div>
+</body>
+</html>

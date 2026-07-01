@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"code-fabrik.com/bend/domain/request"
 	"crypto/tls"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -79,7 +79,7 @@ func (t Transport) SendRequestToTarget(rr request.Request, targetUrl string) req
 		_ = response.Body.Close()
 	}()
 
-	responseBody, err := ioutil.ReadAll(response.Body)
+	responseBody, err := io.ReadAll(response.Body)
 	responseHeader := readHeaders(response.Header)
 
 	return request.Response{

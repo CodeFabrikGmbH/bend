@@ -5,10 +5,11 @@ import (
 	"code-fabrik.com/bend/application"
 	"code-fabrik.com/bend/domain/request"
 	"code-fabrik.com/bend/infrastructure/boltDB"
+	"code-fabrik.com/bend/infrastructure/htmlTemplate"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"encoding/json"
-	"github.com/boltdb/bolt"
-	"io/ioutil"
+	bolt "go.etcd.io/bbolt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -41,7 +42,7 @@ var (
 
 	dashboardPage = DashboardPage{KeyCloakService: keycloakService, DashboardService: dashboardService}
 
-	requestAPI = RequestAPI{RequestService: requestService}
+	requestAPI = RequestAPI{KeyCloakService: keycloakService, RequestService: requestService}
 
 	tracker = TrackRequest{RequestService: requestService}
 )
@@ -87,6 +88,9 @@ func before() {
 		_ = os.Chdir("../..")
 	}
 
+	// templates are embedded in production; in tests we load them from disk
+	_ = htmlTemplate.Load(os.DirFS("."), "resources/*.html")
+
 	cleanDB()
 }
 
@@ -103,7 +107,7 @@ func runTestServe(req *http.Request, handler http.Handler) (statusCode int, resp
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
-	responseData, _ := ioutil.ReadAll(rr.Body)
+	responseData, _ := io.ReadAll(rr.Body)
 	return rr.Result().StatusCode, string(responseData)
 }
 
