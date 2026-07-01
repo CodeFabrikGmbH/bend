@@ -150,6 +150,41 @@ a { color: var(--accent); text-decoration: none; }
 .s-4 { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
 .s-5 { color: var(--err);  background: color-mix(in srgb, var(--err) 16%, transparent); }
 
+/* ---------- List tools / live tail ---------- */
+.listtools { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.search {
+  flex: 1; display: flex; align-items: center; gap: 7px;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--r); padding: 5px 9px;
+}
+.search:focus-within { border-color: var(--accent); }
+.search input { background: none; border: 0; color: var(--txt); font-family: var(--mono); font-size: 12px; width: 100%; outline: none; }
+.search svg { color: var(--faint); flex: none; }
+
+.live-toggle {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: 11px; font-weight: 600; color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
+  border-radius: 20px; padding: 4px 10px; cursor: pointer; white-space: nowrap;
+}
+.live-toggle.paused { color: var(--muted); background: var(--bg-3); border-color: var(--line); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: pulse 2s infinite; flex: none; }
+.live-toggle.paused .live-dot { background: var(--faint); animation: none; }
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.list-note { padding: 8px 14px; font-size: 11px; color: var(--faint); text-align: center; border-top: 1px solid var(--line); }
+
+.req.new { animation: flyin 1.6s ease-out; }
+@keyframes flyin {
+  from { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  to   { background: transparent; }
+}
+
 /* ---------- Detail ---------- */
 .detail-empty { flex: 1; display: grid; place-items: center; text-align: center; color: var(--faint); padding: 40px; }
 .detail-head { padding: 14px 18px; border-bottom: 1px solid var(--line); }

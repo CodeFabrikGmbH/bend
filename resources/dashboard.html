@@ -44,8 +44,21 @@
 
         <!-- Request list -->
         <section class="col list">
-            <div class="col-head"><h2 class="path-title">{{ if .CurrentPath }}{{ .CurrentPath }}{{ else }}Requests{{ end }}</h2></div>
-            <div class="scroll">
+            <div class="col-head">
+                <h2 class="path-title">{{ if .CurrentPath }}{{ .CurrentPath }}{{ else }}Requests{{ end }}</h2>
+                {{ if .CurrentPath }}
+                <button class="live-toggle" id="liveToggle" title="Neue Requests live einblenden"><span class="live-dot"></span>Live</button>
+                {{ end }}
+            </div>
+            {{ if .CurrentPath }}
+            <div class="listtools">
+                <div class="search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input id="search" placeholder="Filter: Methode, Status, ID …" autocomplete="off"/>
+                </div>
+            </div>
+            {{ end }}
+            <div class="scroll" id="reqScroll">
                 {{ with .Requests }}
                 {{ range . }}
                 <div class="req {{ if eq .ID $.RequestDetails.ID }}active{{ end }}" data-open-request="{{ .ID }}">
@@ -61,6 +74,9 @@
                 <div class="col-empty">{{ if .CurrentPath }}Keine Requests für diesen Pfad.{{ else }}Wähl links einen Endpoint.{{ end }}</div>
                 {{ end }}
             </div>
+            {{ if gt .RequestTotal (len .Requests) }}
+            <div class="list-note" id="listNote">Zeige neueste {{ len .Requests }} von {{ .RequestTotal }}</div>
+            {{ end }}
         </section>
 
         <!-- Detail -->
@@ -311,6 +327,74 @@
                     else { toast("Löschen fehlgeschlagen", "Status " + r.status, "err"); }
                 }).catch(function (e) { toast("Fehler", String(e), "err"); });
             });
+        }
+
+        // --- search / filter ---
+        var search = document.getElementById("search");
+        if (search) {
+            search.addEventListener("input", function () {
+                var q = search.value.toLowerCase();
+                document.querySelectorAll("#reqScroll .req").forEach(function (row) {
+                    row.style.display = (!q || row.textContent.toLowerCase().indexOf(q) !== -1) ? "" : "none";
+                });
+            });
+        }
+
+        function statusClass(s) { return (s && String(s) !== "0") ? "s-" + String(s).charAt(0) : "none"; }
+
+        // --- live tail via Server-Sent Events ---
+        var paused = false;
+        var liveToggle = document.getElementById("liveToggle");
+        if (liveToggle) {
+            liveToggle.addEventListener("click", function () {
+                paused = !paused;
+                liveToggle.classList.toggle("paused", paused);
+                liveToggle.lastChild.textContent = paused ? "Pausiert" : "Live";
+            });
+        }
+
+        function bumpEndpoint(path) {
+            var count = null;
+            document.querySelectorAll(".endpoints .ep-count").forEach(function (el) {
+                if (el.getAttribute("data-open-path") === path) { count = el; }
+            });
+            if (count) { count.textContent = String((parseInt(count.textContent, 10) || 0) + 1); return; }
+            var epScroll = document.querySelector(".endpoints .scroll");
+            if (!epScroll) { return; }
+            var empty = epScroll.querySelector(".col-empty");
+            if (empty) { empty.remove(); }
+            var ep = document.createElement("div");
+            ep.className = "ep";
+            ep.innerHTML = '<span class="ep-path" data-open-path="' + esc(path) + '">' + esc(path) + '</span>' +
+                '<span class="ep-count" data-open-path="' + esc(path) + '">1</span>';
+            epScroll.appendChild(ep);
+        }
+
+        function prependRequest(ev) {
+            var scroll = document.getElementById("reqScroll");
+            if (!scroll) { return; }
+            var empty = scroll.querySelector(".col-empty");
+            if (empty) { empty.remove(); }
+            var row = document.createElement("div");
+            row.className = "req new";
+            row.setAttribute("data-open-request", ev.id);
+            row.innerHTML =
+                '<span class="method m-' + esc(ev.method) + '">' + esc(ev.method) + '</span>' +
+                '<div class="req-mid"><div class="req-time">' + esc(ev.timestamp) + '</div><div class="req-id">#' + esc(ev.id) + '</div></div>' +
+                '<span class="status ' + statusClass(ev.status) + '">' + (ev.status ? esc(ev.status) : "—") + '</span>';
+            scroll.insertBefore(row, scroll.firstChild);
+            setTimeout(function () { row.classList.remove("new"); }, 1700);
+        }
+
+        if (window.EventSource) {
+            var es = new EventSource("/api/events");
+            es.onmessage = function (e) {
+                var ev;
+                try { ev = JSON.parse(e.data); } catch (x) { return; }
+                if (!ev || !ev.path) { return; }
+                bumpEndpoint(ev.path);
+                if (ev.path === BEND.currentPath && !paused) { prependRequest(ev); }
+            };
         }
     })();
 </script>

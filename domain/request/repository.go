@@ -1,7 +1,7 @@
 package request
 
 type Repository interface {
-	Add(req Request) error
+	Add(req Request) (Request, error)
 	GetPaths() []string
 	GetPathCounts() map[string]int
 	GetRequestCountForPath(path string) int

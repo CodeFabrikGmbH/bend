@@ -19,7 +19,7 @@ func bucketName(path string) string {
 	return bucketPrefix + path
 }
 
-func (rr RequestRepository) Add(req request.Request) error {
+func (rr RequestRepository) Add(req request.Request) (request.Request, error) {
 	db := rr.DB
 
 	err := db.Update(func(txn *bolt.Tx) error {
@@ -44,7 +44,7 @@ func (rr RequestRepository) Add(req request.Request) error {
 		}
 		return nil
 	})
-	return err
+	return req, err
 }
 
 func (rr RequestRepository) GetRequest(path string, id string) request.Request {

@@ -36,6 +36,8 @@ func main() {
 	migrate(configRepository)
 
 	keycloakService := keycloak.New()
+	eventHub := application.NewEventHub()
+
 	configService := application.ConfigService{
 		ConfigRepository: configRepository,
 	}
@@ -44,6 +46,7 @@ func main() {
 		RequestRepository: requestRepository,
 		ConfigRepository:  configRepository,
 		Transport:         transport,
+		Hub:               eventHub,
 	}
 
 	dashboardService := application.DashboardService{
@@ -64,6 +67,7 @@ func main() {
 
 	mux.Handle("/api/configs/", httpHandler.ConfigAPI{KeyCloakService: keycloakService, ConfigService: configService})
 	mux.Handle("/api/requests/", httpHandler.RequestAPI{KeyCloakService: keycloakService, RequestService: requestService})
+	mux.Handle("/api/events", httpHandler.EventsAPI{KeyCloakService: keycloakService, Hub: eventHub})
 
 	mux.Handle("/", httpHandler.TrackRequest{RequestService: requestService})
 

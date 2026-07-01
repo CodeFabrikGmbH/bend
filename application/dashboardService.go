@@ -30,10 +30,15 @@ type RequestDetails struct {
 	Response  request.Response    `json:"response"`
 }
 
+// dashboardRequestLimit caps how many requests are rendered per path so a busy
+// path does not produce an enormous page. The newest ones are shown.
+const dashboardRequestLimit = 200
+
 type DashBoardViewData struct {
 	Paths          []Path
 	CurrentPath    string
 	Requests       []RequestAbstract
+	RequestTotal   int
 	RequestDetails RequestDetails
 }
 
@@ -57,6 +62,10 @@ type DashboardService struct {
 
 func (ds DashboardService) GenerateDashboardViewData(path string, requestId string) DashBoardViewData {
 	requests := ds.getRequests(path)
+	total := len(requests)
+	if total > dashboardRequestLimit {
+		requests = requests[:dashboardRequestLimit]
+	}
 	if len(requestId) == 0 && len(requests) > 0 {
 		requestId = requests[0].ID
 	}
@@ -65,6 +74,7 @@ func (ds DashboardService) GenerateDashboardViewData(path string, requestId stri
 		Paths:          ds.getPaths(),
 		CurrentPath:    path,
 		Requests:       requests,
+		RequestTotal:   total,
 		RequestDetails: ds.getRequestDetails(path, requestId),
 	}
 }

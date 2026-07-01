@@ -3,12 +3,14 @@ package application
 import (
 	"code-fabrik.com/bend/domain/config"
 	"code-fabrik.com/bend/domain/request"
+	"time"
 )
 
 type RequestService struct {
 	RequestRepository request.Repository
 	ConfigRepository  config.Repository
 	Transport         request.Transport
+	Hub               *EventHub
 }
 
 const defaultStatusCode = 200
@@ -28,10 +30,21 @@ func (rs RequestService) SendRequestToTarget(path, requestId, targetUrl string) 
 
 func (rs RequestService) TrackRequest(req request.Request) request.Response {
 	req.Response = rs.getOrCreateResponse(req)
-	err := rs.RequestRepository.Add(req)
+	stored, err := rs.RequestRepository.Add(req)
 
 	if err != nil {
 		req.Response.Error = err.Error()
+		return req.Response
+	}
+
+	if rs.Hub != nil {
+		rs.Hub.Publish(RequestEvent{
+			Path:      stored.Path,
+			ID:        stored.ID,
+			Method:    stored.Method,
+			Status:    stored.Response.ResponseStatusCode,
+			Timestamp: time.Unix(0, stored.Timestamp).Format("2 Jan 2006 15:04:05"),
+		})
 	}
 
 	return req.Response
