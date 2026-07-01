@@ -12,8 +12,8 @@ import (
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"context"
 	"errors"
-	bolt "go.etcd.io/bbolt"
 	"github.com/google/uuid"
+	bolt "go.etcd.io/bbolt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -34,6 +34,19 @@ func main() {
 	}()
 
 	migrate(configRepository)
+
+	// One-off backfill of the per-path request counts used by the dashboard.
+	// Runs in the background so it never blocks start-up or request tracking; it
+	// is a no-op after the first successful run.
+	if backfiller, ok := requestRepository.(interface{ BackfillPathCounts() error }); ok {
+		go func() {
+			if err := backfiller.BackfillPathCounts(); err != nil {
+				slog.Error("path count backfill failed", "err", err)
+			} else {
+				slog.Info("path count backfill complete")
+			}
+		}()
+	}
 
 	keycloakService := keycloak.New()
 	eventHub := application.NewEventHub()
@@ -67,8 +80,13 @@ func main() {
 
 	mux.Handle("/api/configs/", httpHandler.ConfigAPI{KeyCloakService: keycloakService, ConfigService: configService})
 	mux.Handle("/api/requests/", httpHandler.RequestAPI{KeyCloakService: keycloakService, RequestService: requestService})
+	mux.Handle("/api/request-list", httpHandler.RequestListAPI{KeyCloakService: keycloakService, RequestService: requestService})
 	mux.Handle("/api/events", httpHandler.EventsAPI{KeyCloakService: keycloakService, Hub: eventHub})
 
+	// The bare root serves the admin UI (config page); every other path is the
+	// request catcher. "/{$}" matches only "/", so it takes precedence over the
+	// catch-all "/" below without shadowing tracked paths.
+	mux.Handle("/{$}", http.RedirectHandler("/configs/", http.StatusFound))
 	mux.Handle("/", httpHandler.TrackRequest{RequestService: requestService})
 
 	server := &http.Server{

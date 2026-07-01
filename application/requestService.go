@@ -15,6 +15,24 @@ type RequestService struct {
 
 const defaultStatusCode = 200
 
+// RequestPage is a page of request summaries returned by the pagination API.
+type RequestPage struct {
+	Items   []RequestAbstract `json:"items"`
+	HasMore bool              `json:"hasMore"`
+}
+
+// ListRequests returns a page of request summaries for a path, newest first.
+// before is an exclusive upper bound on the request id (0 for the newest page).
+func (rs RequestService) ListRequests(path string, before int, limit int) RequestPage {
+	summaries, hasMore := rs.RequestRepository.GetSummariesPage(path, before, limit)
+
+	items := make([]RequestAbstract, 0, len(summaries))
+	for _, s := range summaries {
+		items = append(items, newRequestAbstract(s))
+	}
+	return RequestPage{Items: items, HasMore: hasMore}
+}
+
 func (rs RequestService) DeleteAllRequestsForPath(path string) error {
 	return rs.RequestRepository.DeletePath(path)
 }

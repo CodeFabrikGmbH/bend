@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link rel="stylesheet" type="text/css" href="/static/css/styles.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css?v=0.6.5"/>
     <title>bend — Requests</title>
 </head>
 <body>
@@ -13,7 +13,7 @@
         <nav class="nav">
             <a class="active" href="/dashboard/">Requests</a>
             <a href="/configs/">Endpoints</a>
-            <a href="/readme/" target="_blank" rel="noopener">Docs</a>
+            <a href="/readme/">Docs</a>
         </nav>
         <form class="logout-form" method="post" action="/login">
             <input type="hidden" name="logout" value="true"/>
@@ -25,6 +25,12 @@
         <!-- Endpoints -->
         <section class="col endpoints">
             <div class="col-head"><h2>Endpoints</h2></div>
+            <div class="listtools">
+                <div class="search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input id="epSearch" placeholder="Endpoints filtern …" autocomplete="off"/>
+                </div>
+            </div>
             <div class="scroll">
                 {{ with .Paths }}
                 {{ range . }}
@@ -40,6 +46,9 @@
                 <div class="col-empty">Noch keine Requests.<br>Zeig einen Client auf diesen Server.</div>
                 {{ end }}
             </div>
+            {{ if gt .PathTotal (len .Paths) }}
+            <div class="list-note">Zeige aktivste {{ len .Paths }} von {{ .PathTotal }} Pfaden</div>
+            {{ end }}
         </section>
 
         <!-- Request list -->
@@ -181,7 +190,9 @@
 <script>
     window.BEND = {
         currentPath: {{ .CurrentPath }},
-        requestId: "{{ .RequestDetails.ID }}"
+        requestId: "{{ .RequestDetails.ID }}",
+        requestTotal: {{ .RequestTotal }},
+        hasMore: {{ if .HasMore }}true{{ else }}false{{ end }}
     };
 
     (function () {
@@ -342,6 +353,73 @@
 
         function statusClass(s) { return (s && String(s) !== "0") ? "s-" + String(s).charAt(0) : "none"; }
 
+        // --- endpoint filter (sidebar) ---
+        var epSearch = document.getElementById("epSearch");
+        if (epSearch) {
+            epSearch.addEventListener("input", function () {
+                var q = epSearch.value.toLowerCase();
+                document.querySelectorAll(".endpoints .ep").forEach(function (row) {
+                    var path = row.querySelector(".ep-path");
+                    var text = path ? path.textContent.toLowerCase() : "";
+                    row.style.display = (!q || text.indexOf(q) !== -1) ? "" : "none";
+                });
+            });
+        }
+
+        // --- paginated request list (infinite scroll) ---
+        var reqScroll = document.getElementById("reqScroll");
+        var listNote = document.getElementById("listNote");
+        var loading = false;
+        var loadedCount = document.querySelectorAll("#reqScroll .req").length;
+        var hasMore = !!BEND.hasMore;
+        var oldestId = (function () {
+            var rows = document.querySelectorAll("#reqScroll .req");
+            if (!rows.length) { return 0; }
+            return parseInt(rows[rows.length - 1].getAttribute("data-open-request"), 10) || 0;
+        })();
+
+        function updateNote() {
+            if (!listNote) { return; }
+            listNote.textContent = (hasMore || loadedCount < BEND.requestTotal)
+                ? loadedCount + " von " + BEND.requestTotal + " geladen"
+                : "Alle " + BEND.requestTotal + " geladen";
+        }
+
+        function appendApiRow(it) {
+            var row = document.createElement("div");
+            row.className = "req";
+            row.setAttribute("data-open-request", it.ID);
+            row.innerHTML =
+                '<span class="method m-' + esc(it.method) + '">' + esc(it.method) + '</span>' +
+                '<div class="req-mid"><div class="req-time">' + esc(it.timestamp) + '</div><div class="req-id">#' + esc(it.ID) + '</div></div>' +
+                '<span class="status ' + statusClass(it.status) + '">' + (it.status ? esc(it.status) : "—") + '</span>';
+            reqScroll.appendChild(row);
+        }
+
+        function loadMore() {
+            if (loading || !hasMore || !reqScroll || !BEND.currentPath) { return; }
+            loading = true;
+            var url = "/api/request-list?path=" + encodeURIComponent(BEND.currentPath) + "&before=" + oldestId + "&limit=50";
+            fetch(url).then(function (r) { return r.json(); }).then(function (page) {
+                (page.items || []).forEach(function (it) {
+                    appendApiRow(it);
+                    loadedCount++;
+                    oldestId = parseInt(it.ID, 10) || oldestId;
+                });
+                hasMore = !!page.hasMore;
+                updateNote();
+            }).catch(function () {}).finally(function () { loading = false; });
+        }
+
+        if (reqScroll && BEND.currentPath) {
+            reqScroll.addEventListener("scroll", function () {
+                if (reqScroll.scrollTop + reqScroll.clientHeight >= reqScroll.scrollHeight - 120) { loadMore(); }
+            });
+            updateNote();
+            // if the first page does not fill the viewport, keep loading
+            if (hasMore && reqScroll.scrollHeight <= reqScroll.clientHeight + 4) { loadMore(); }
+        }
+
         // --- live tail via Server-Sent Events ---
         var paused = false;
         var liveToggle = document.getElementById("liveToggle");
@@ -384,6 +462,9 @@
                 '<span class="status ' + statusClass(ev.status) + '">' + (ev.status ? esc(ev.status) : "—") + '</span>';
             scroll.insertBefore(row, scroll.firstChild);
             setTimeout(function () { row.classList.remove("new"); }, 1700);
+            loadedCount++;
+            BEND.requestTotal++;
+            updateNote();
         }
 
         if (window.EventSource) {

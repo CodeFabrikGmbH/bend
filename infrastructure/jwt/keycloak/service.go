@@ -61,12 +61,20 @@ func (k *Service) Authenticate(w http.ResponseWriter, r *http.Request) (*authent
 	return k.BuildUserFromOIDCResponse(r.Context(), w, accessCookie.Value, refreshCookie.Value)
 }
 
+// newClient builds a gocloak client. The Keycloak server still uses the legacy
+// "/auth" path prefix, which gocloak v13 no longer applies by default, so we
+// restore it explicitly. KEYCLOAK_HOST stays the bare host without "/auth"
+// (see jwks.jwksUrl, which hardcodes the same prefix).
+func (k *Service) newClient() *gocloak.GoCloak {
+	return gocloak.NewClient(k.config.HostName, gocloak.SetLegacyWildFlySupport())
+}
+
 func (k *Service) BuildUserFromOIDCResponse(ctx context.Context, w http.ResponseWriter, accessToken, refreshToken string) (*authentication.User, error) {
 	if len(accessToken) == 0 {
 		return nil, fmt.Errorf("access token undefined")
 	}
 
-	client := gocloak.NewClient(k.config.HostName)
+	client := k.newClient()
 
 	if userInfo, err := client.GetUserInfo(ctx, accessToken, k.config.Realm); err == nil {
 		return k.newUser(userInfo)
@@ -81,7 +89,7 @@ func (k *Service) BuildUserFromOIDCResponse(ctx context.Context, w http.Response
 }
 
 func (k *Service) Login(ctx context.Context, w http.ResponseWriter, username, password string) (*authentication.User, error) {
-	client := gocloak.NewClient(k.config.HostName)
+	client := k.newClient()
 
 	jwt, err := client.Login(ctx, k.config.ClientId, k.config.ClientSecret, k.config.Realm, username, password)
 	if err != nil {

@@ -30,15 +30,24 @@ type RequestDetails struct {
 	Response  request.Response    `json:"response"`
 }
 
-// dashboardRequestLimit caps how many requests are rendered per path so a busy
-// path does not produce an enormous page. The newest ones are shown.
-const dashboardRequestLimit = 200
+// dashboardPageSize is how many requests are rendered for a path on the first
+// load. Older requests are fetched incrementally as the user scrolls, so a busy
+// path (hundreds of thousands of requests) never has to be read into memory or
+// serialized into the page at once.
+const dashboardPageSize = 50
+
+// dashboardPathLimit caps how many endpoints are rendered in the sidebar. With
+// tens of thousands of distinct paths the full list would produce a multi-MB
+// page; the most active paths are shown.
+const dashboardPathLimit = 500
 
 type DashBoardViewData struct {
 	Paths          []Path
+	PathTotal      int
 	CurrentPath    string
 	Requests       []RequestAbstract
 	RequestTotal   int
+	HasMore        bool
 	RequestDetails RequestDetails
 }
 
@@ -61,20 +70,26 @@ type DashboardService struct {
 }
 
 func (ds DashboardService) GenerateDashboardViewData(path string, requestId string) DashBoardViewData {
-	requests := ds.getRequests(path)
-	total := len(requests)
-	if total > dashboardRequestLimit {
-		requests = requests[:dashboardRequestLimit]
-	}
+	requests, hasMore := ds.getRequests(path)
+	total := ds.RequestRepository.GetRequestCountForPath(path)
+
 	if len(requestId) == 0 && len(requests) > 0 {
 		requestId = requests[0].ID
 	}
 
+	paths := ds.getPaths()
+	pathTotal := len(paths)
+	if len(paths) > dashboardPathLimit {
+		paths = paths[:dashboardPathLimit]
+	}
+
 	return DashBoardViewData{
-		Paths:          ds.getPaths(),
+		Paths:          paths,
+		PathTotal:      pathTotal,
 		CurrentPath:    path,
 		Requests:       requests,
 		RequestTotal:   total,
+		HasMore:        hasMore,
 		RequestDetails: ds.getRequestDetails(path, requestId),
 	}
 }
@@ -100,22 +115,25 @@ func (ds DashboardService) getPaths() []Path {
 	return requestPaths
 }
 
-func (ds DashboardService) getRequests(path string) []RequestAbstract {
-	summaries := ds.RequestRepository.GetSummariesForPath(path)
-	sort.SliceStable(summaries, func(i, j int) bool {
-		return summaries[i].Timestamp > summaries[j].Timestamp
-	})
+func (ds DashboardService) getRequests(path string) ([]RequestAbstract, bool) {
+	summaries, hasMore := ds.RequestRepository.GetSummariesPage(path, 0, dashboardPageSize)
 
-	var dashboardRequests []RequestAbstract
+	dashboardRequests := make([]RequestAbstract, 0, len(summaries))
 	for _, s := range summaries {
-		dashboardRequests = append(dashboardRequests, RequestAbstract{
-			ID:        s.ID,
-			Timestamp: time.Unix(0, s.Timestamp).Format("2 Jan 2006 15:04:05"),
-			Method:    s.Method,
-			Status:    s.Response.ResponseStatusCode,
-		})
+		dashboardRequests = append(dashboardRequests, newRequestAbstract(s))
 	}
-	return dashboardRequests
+	return dashboardRequests, hasMore
+}
+
+// newRequestAbstract projects a stored summary into the list-view shape used by
+// both the initial page render and the incremental pagination API.
+func newRequestAbstract(s request.Summary) RequestAbstract {
+	return RequestAbstract{
+		ID:        s.ID,
+		Timestamp: time.Unix(0, s.Timestamp).Format("2 Jan 2006 15:04:05"),
+		Method:    s.Method,
+		Status:    s.Response.ResponseStatusCode,
+	}
 }
 
 func (ds DashboardService) getRequestDetails(path string, id string) RequestDetails {
