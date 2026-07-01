@@ -18,3 +18,11 @@ func (r Request) ToJson() string {
 	marshal, _ := json.Marshal(r)
 	return string(marshal)
 }
+
+// Summary is a lightweight projection of a Request used for list views. It
+// deliberately omits the body, headers and response so those large fields are
+// not read into memory when only an overview is needed.
+type Summary struct {
+	ID        string `json:"ID"`
+	Timestamp int64  `json:"timestamp"`
+}

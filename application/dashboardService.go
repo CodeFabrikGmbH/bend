@@ -35,13 +35,6 @@ type DashBoardViewData struct {
 	RequestDetails RequestDetails
 }
 
-func CreateRequestAbstract(request request.Request) RequestAbstract {
-	return RequestAbstract{
-		ID:        request.ID,
-		Timestamp: time.Unix(0, request.Timestamp).Format("2 Jan 2006 15:04:05"),
-	}
-}
-
 func CreateRequestDetails(request request.Request) RequestDetails {
 	return RequestDetails{
 		ID:        request.ID,
@@ -75,34 +68,38 @@ func (ds DashboardService) GenerateDashboardViewData(path string, requestId stri
 }
 
 func (ds DashboardService) getPaths() []Path {
-	var requestPaths []Path
+	counts := ds.RequestRepository.GetPathCounts()
 
-	paths := ds.RequestRepository.GetPaths()
-	for _, p := range paths {
-		count := ds.RequestRepository.GetRequestCountForPath(p)
-
+	requestPaths := make([]Path, 0, len(counts))
+	for path, count := range counts {
 		requestPaths = append(requestPaths, Path{
-			Path:  p,
+			Path:  path,
 			Count: count,
 		})
 	}
 
 	sort.SliceStable(requestPaths, func(i, j int) bool {
-		return requestPaths[i].Count > requestPaths[j].Count
+		if requestPaths[i].Count != requestPaths[j].Count {
+			return requestPaths[i].Count > requestPaths[j].Count
+		}
+		return requestPaths[i].Path < requestPaths[j].Path
 	})
 
 	return requestPaths
 }
 
 func (ds DashboardService) getRequests(path string) []RequestAbstract {
-	requests := ds.RequestRepository.GetRequestsForPath(path)
-	sort.SliceStable(requests, func(i, j int) bool {
-		return requests[i].Timestamp > requests[j].Timestamp
+	summaries := ds.RequestRepository.GetSummariesForPath(path)
+	sort.SliceStable(summaries, func(i, j int) bool {
+		return summaries[i].Timestamp > summaries[j].Timestamp
 	})
 
 	var dashboardRequests []RequestAbstract
-	for _, r := range requests {
-		dashboardRequests = append(dashboardRequests, CreateRequestAbstract(r))
+	for _, s := range summaries {
+		dashboardRequests = append(dashboardRequests, RequestAbstract{
+			ID:        s.ID,
+			Timestamp: time.Unix(0, s.Timestamp).Format("2 Jan 2006 15:04:05"),
+		})
 	}
 	return dashboardRequests
 }

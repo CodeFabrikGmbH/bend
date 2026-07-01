@@ -91,6 +91,58 @@ func (rr RequestRepository) GetRequestsForPath(path string) []request.Request {
 	return requests
 }
 
+// GetSummariesForPath returns a lightweight projection (ID + timestamp) of the
+// requests for a path. It unmarshals only the summary fields, so bodies, headers
+// and responses are never read into memory for list views.
+func (rr RequestRepository) GetSummariesForPath(path string) []request.Summary {
+	db := rr.DB
+
+	var summaries []request.Summary
+
+	_ = db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucketName(path)))
+		if bucket != nil {
+			return bucket.ForEach(func(name []byte, value []byte) error {
+				summary := request.Summary{}
+				_ = json.Unmarshal(value, &summary)
+				summaries = append(summaries, summary)
+				return nil
+			})
+		}
+		return nil
+	})
+
+	return summaries
+}
+
+// GetPathCounts returns the request count per path, computed parse-free in a
+// single read transaction instead of one transaction and full scan per path.
+func (rr RequestRepository) GetPathCounts() map[string]int {
+	db := rr.DB
+
+	counts := make(map[string]int)
+
+	_ = db.View(func(tx *bolt.Tx) error {
+		return tx.ForEach(func(name []byte, b *bolt.Bucket) error {
+			bucketName := string(name)
+			if strings.Index(bucketName, bucketPrefix) != 0 {
+				return nil
+			}
+			path := strings.TrimPrefix(bucketName, bucketPrefix)
+
+			count := 0
+			cursor := b.Cursor()
+			for k, _ := cursor.First(); k != nil; k, _ = cursor.Next() {
+				count++
+			}
+			counts[path] = count
+			return nil
+		})
+	})
+
+	return counts
+}
+
 func (rr RequestRepository) GetRequestCountForPath(path string) int {
 	db := rr.DB
 	var result int
