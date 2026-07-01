@@ -4,8 +4,8 @@ import (
 	"code-fabrik.com/bend/application"
 	"code-fabrik.com/bend/infrastructure/htmlTemplate"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
-	"fmt"
 	"github.com/google/uuid"
+	"log/slog"
 	"net/http"
 	"strings"
 )
@@ -26,7 +26,7 @@ type ConfigInput struct {
 func (cp ConfigPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			fmt.Println(rec)
+			slog.Error("panic in ConfigPage", "recover", rec)
 		}
 	}()
 
@@ -41,7 +41,7 @@ func (cp ConfigPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		configData := cp.ConfigService.GetConfigData(id)
-		htmlTemplate.PresentHtmlTemplate(w, "resources/config.html", configData)
+		htmlTemplate.PresentHtmlTemplate(w, "config.html", configData)
 	}
 }
 

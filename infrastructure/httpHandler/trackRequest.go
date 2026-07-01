@@ -4,7 +4,8 @@ import (
 	"code-fabrik.com/bend/application"
 	"code-fabrik.com/bend/domain/request"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -20,7 +21,7 @@ type TrackRequest struct {
 func (rs TrackRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			fmt.Println(rec)
+			slog.Error("panic in TrackRequest", "recover", rec)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -29,7 +30,7 @@ func (rs TrackRequest) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = r.Body.Close()
 	}()
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
 		return

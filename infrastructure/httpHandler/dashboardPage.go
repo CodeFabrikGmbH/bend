@@ -4,7 +4,7 @@ import (
 	"code-fabrik.com/bend/application"
 	"code-fabrik.com/bend/infrastructure/htmlTemplate"
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 )
@@ -17,7 +17,7 @@ type DashboardPage struct {
 func (dp DashboardPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			fmt.Println(rec)
+			slog.Error("panic in DashboardPage", "recover", rec)
 		}
 	}()
 
@@ -33,5 +33,5 @@ func (dp DashboardPage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	dashBoardData := dp.DashboardService.GenerateDashboardViewData(requestPath, requestId)
 
-	htmlTemplate.PresentHtmlTemplate(w, "resources/dashboard.html", dashBoardData)
+	htmlTemplate.PresentHtmlTemplate(w, "dashboard.html", dashBoardData)
 }

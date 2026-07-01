@@ -12,6 +12,9 @@ var KEYCLOAK_REALM = getEnvironmentStringValue("KEYCLOAK_REALM", "")
 // tokens are only sent over HTTPS; set COOKIE_SECURE=false for local HTTP setups.
 var COOKIE_SECURE = getEnvironmentBoolValue("COOKIE_SECURE", true)
 
+// LISTEN_ADDR is the address the HTTP server binds to. Override with BEND_ADDR.
+var LISTEN_ADDR = getEnvironmentStringValue("BEND_ADDR", ":8080")
+
 func getEnvironmentStringValue(name string, defaultValue string) string {
 	value := os.Getenv(name)
 	if value == "" {

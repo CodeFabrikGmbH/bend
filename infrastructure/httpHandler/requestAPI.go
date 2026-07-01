@@ -5,6 +5,7 @@ import (
 	"code-fabrik.com/bend/infrastructure/jwt/keycloak"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 )
@@ -21,7 +22,7 @@ type RequestAPI struct {
 func (rs RequestAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			fmt.Println(rec)
+			slog.Error("panic in RequestAPI", "recover", rec)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()

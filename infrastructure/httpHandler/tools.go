@@ -1,7 +1,7 @@
 package httpHandler
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -32,5 +32,5 @@ func readRequestBody(r *http.Request) ([]byte, error) {
 	defer func() {
 		_ = r.Body.Close()
 	}()
-	return ioutil.ReadAll(r.Body)
+	return io.ReadAll(r.Body)
 }
