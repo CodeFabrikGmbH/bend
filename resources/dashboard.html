@@ -21,7 +21,12 @@
         </form>
     </header>
 
-    <div class="inspector">
+    <div class="inspector"
+         data-current-path="{{ .CurrentPath }}"
+         data-request-id="{{ .RequestDetails.ID }}"
+         data-request-total="{{ .RequestTotal }}"
+         data-has-more="{{ if .HasMore }}1{{ else }}0{{ end }}"
+         data-uri="{{ .RequestDetails.Uri }}">
         <!-- Endpoints -->
         <section class="col endpoints">
             <div class="col-head"><h2>Endpoints</h2></div>
@@ -188,13 +193,6 @@
 <div class="toasts" id="toasts"></div>
 
 <script>
-    window.BEND = {
-        currentPath: {{ .CurrentPath }},
-        requestId: "{{ .RequestDetails.ID }}",
-        requestTotal: {{ .RequestTotal }},
-        hasMore: {{ if .HasMore }}true{{ else }}false{{ end }}
-    };
-
     (function () {
         "use strict";
         var strip = function (p) { return String(p).replace(/^\/+/, ""); };
@@ -207,6 +205,7 @@
         function esc(s) {
             return String(s).replace(/[&<>]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]; });
         }
+        function statusClass(s) { return (s && String(s) !== "0") ? "s-" + String(s).charAt(0) : "none"; }
 
         function toast(title, desc, kind) {
             var el = document.createElement("div");
@@ -217,14 +216,17 @@
             setTimeout(function () { el.remove(); }, 3800);
         }
 
-        // status colour classes from data-status
-        document.querySelectorAll("[data-status]").forEach(function (el) {
-            var s = el.getAttribute("data-status");
-            if (s && s !== "0") { el.classList.add("s-" + s.charAt(0)); }
-            else { el.classList.add("none"); }
-        });
+        // --- shared state, sourced from the .inspector data attributes ---
+        window.BEND = { currentPath: "", requestId: "", requestTotal: 0, hasMore: false };
+        function refreshBend() {
+            var el = document.querySelector(".inspector");
+            if (!el) { return; }
+            BEND.currentPath = el.getAttribute("data-current-path") || "";
+            BEND.requestId = el.getAttribute("data-request-id") || "";
+            BEND.requestTotal = parseInt(el.getAttribute("data-request-total"), 10) || 0;
+            BEND.hasMore = el.getAttribute("data-has-more") === "1";
+        }
 
-        // pretty-print + highlight JSON bodies
         function highlight(str) {
             var s = esc(str)
                 .replace(/"([^"\\]*)":/g, '<span class="k">"$1"</span>:')
@@ -233,45 +235,48 @@
                 .replace(/: (true|false|null)/g, ': <span class="b">$1</span>');
             return s;
         }
-        document.querySelectorAll("[data-json]").forEach(function (el) {
-            var raw = el.textContent.trim();
-            if (!raw) { el.innerHTML = '<span class="empty">(kein Body)</span>'; return; }
-            var pretty = raw;
-            try { pretty = JSON.stringify(JSON.parse(raw), null, 2); } catch (e) { /* not JSON */ }
-            el.innerHTML = highlight(pretty);
-            var copy = document.createElement("button");
-            copy.className = "copy-inline"; copy.textContent = "Kopieren";
-            copy.addEventListener("click", function () {
-                navigator.clipboard && navigator.clipboard.writeText(raw);
-                toast("Kopiert", null, "ok");
-            });
-            el.appendChild(copy);
-        });
 
-        // tab switching
-        document.querySelectorAll(".tab").forEach(function (tab) {
-            tab.addEventListener("click", function () {
-                var name = tab.getAttribute("data-tab");
-                document.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("active", t === tab); });
-                document.querySelectorAll("[data-pane]").forEach(function (p) {
-                    p.classList.toggle("hidden", p.getAttribute("data-pane") !== name);
+        // status colour classes from data-status, scoped to a freshly rendered subtree
+        function applyStatusColors(root) {
+            root.querySelectorAll("[data-status]").forEach(function (el) {
+                var s = el.getAttribute("data-status");
+                if (s && s !== "0") { el.classList.add("s-" + s.charAt(0)); }
+                else { el.classList.add("none"); }
+            });
+        }
+
+        // pretty-print + highlight JSON bodies within a subtree
+        function applyJson(root) {
+            root.querySelectorAll("[data-json]").forEach(function (el) {
+                var raw = el.textContent.trim();
+                if (!raw) { el.innerHTML = '<span class="empty">(kein Body)</span>'; return; }
+                var pretty = raw;
+                try { pretty = JSON.stringify(JSON.parse(raw), null, 2); } catch (e) { /* not JSON */ }
+                el.innerHTML = highlight(pretty);
+                var copy = document.createElement("button");
+                copy.className = "copy-inline"; copy.textContent = "Kopieren";
+                copy.addEventListener("click", function () {
+                    navigator.clipboard && navigator.clipboard.writeText(raw);
+                    toast("Kopiert", null, "ok");
+                });
+                el.appendChild(copy);
+            });
+        }
+
+        // tab switching within a detail subtree
+        function bindTabs(detailRoot) {
+            detailRoot.querySelectorAll(".tab").forEach(function (tab) {
+                tab.addEventListener("click", function () {
+                    var name = tab.getAttribute("data-tab");
+                    detailRoot.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("active", t === tab); });
+                    detailRoot.querySelectorAll("[data-pane]").forEach(function (p) {
+                        p.classList.toggle("hidden", p.getAttribute("data-pane") !== name);
+                    });
                 });
             });
-        });
+        }
 
-        // navigation (event delegation)
-        document.addEventListener("click", function (e) {
-            var openPath = e.target.closest("[data-open-path]");
-            if (openPath) { window.location = pageUrl(openPath.getAttribute("data-open-path")); return; }
-            var openReq = e.target.closest("[data-open-request]");
-            if (openReq) { window.location = pageUrl(BEND.currentPath, openReq.getAttribute("data-open-request")); return; }
-            var delPath = e.target.closest("[data-del-path]");
-            if (delPath) { e.stopPropagation(); confirmDeletePath(delPath.getAttribute("data-del-path")); return; }
-            var close = e.target.closest("[data-close-modal]");
-            if (close) { closeModal(close.getAttribute("data-close-modal")); return; }
-        });
-
-        // modals
+        // --- modals (persistent, bound once) ---
         function openModal(id) { document.getElementById(id).classList.add("open"); }
         function closeModal(id) { document.getElementById(id).classList.remove("open"); }
         document.querySelectorAll(".modal-backdrop").forEach(function (b) {
@@ -293,10 +298,25 @@
             if (e.target.id === "confirmModal" && confirmResolver) { confirmResolver(false); confirmResolver = null; }
         });
 
-        // actions
-        var btnSend = document.getElementById("btnSend");
-        if (btnSend) { btnSend.addEventListener("click", function () { openModal("sendModal"); }); }
+        // --- detail actions (rebound whenever the detail column is swapped) ---
+        function bindDetailActions(detailRoot) {
+            var btnSend = detailRoot.querySelector("#btnSend");
+            if (btnSend) { btnSend.addEventListener("click", function () { openModal("sendModal"); }); }
+            var btnDelete = detailRoot.querySelector("#btnDelete");
+            if (btnDelete) {
+                btnDelete.addEventListener("click", function () {
+                    confirmAction("Request löschen", "Diesen Request unwiderruflich löschen?").then(function (ok) {
+                        if (!ok) { return; }
+                        fetch(apiUrl(BEND.currentPath, BEND.requestId), {method: "DELETE"}).then(function (r) {
+                            if (r.ok) { navigateTo(pageUrl(BEND.currentPath), true, false); }
+                            else { toast("Löschen fehlgeschlagen", "Status " + r.status, "err"); }
+                        }).catch(function (e) { toast("Fehler", String(e), "err"); });
+                    });
+                });
+            }
+        }
 
+        // btnSendConfirm lives in the persistent modal; bind it once.
         var btnSendConfirm = document.getElementById("btnSendConfirm");
         if (btnSendConfirm) {
             btnSendConfirm.addEventListener("click", function () {
@@ -317,19 +337,6 @@
             });
         }
 
-        var btnDelete = document.getElementById("btnDelete");
-        if (btnDelete) {
-            btnDelete.addEventListener("click", function () {
-                confirmAction("Request löschen", "Diesen Request unwiderruflich löschen?").then(function (ok) {
-                    if (!ok) { return; }
-                    fetch(apiUrl(BEND.currentPath, BEND.requestId), {method: "DELETE"}).then(function (r) {
-                        if (r.ok) { window.location = pageUrl(BEND.currentPath); }
-                        else { toast("Löschen fehlgeschlagen", "Status " + r.status, "err"); }
-                    }).catch(function (e) { toast("Fehler", String(e), "err"); });
-                });
-            });
-        }
-
         function confirmDeletePath(path) {
             confirmAction("Pfad löschen", "Alle Requests für " + path + " löschen?").then(function (ok) {
                 if (!ok) { return; }
@@ -340,43 +347,9 @@
             });
         }
 
-        // --- search / filter ---
-        var search = document.getElementById("search");
-        if (search) {
-            search.addEventListener("input", function () {
-                var q = search.value.toLowerCase();
-                document.querySelectorAll("#reqScroll .req").forEach(function (row) {
-                    row.style.display = (!q || row.textContent.toLowerCase().indexOf(q) !== -1) ? "" : "none";
-                });
-            });
-        }
-
-        function statusClass(s) { return (s && String(s) !== "0") ? "s-" + String(s).charAt(0) : "none"; }
-
-        // --- endpoint filter (sidebar) ---
-        var epSearch = document.getElementById("epSearch");
-        if (epSearch) {
-            epSearch.addEventListener("input", function () {
-                var q = epSearch.value.toLowerCase();
-                document.querySelectorAll(".endpoints .ep").forEach(function (row) {
-                    var path = row.querySelector(".ep-path");
-                    var text = path ? path.textContent.toLowerCase() : "";
-                    row.style.display = (!q || text.indexOf(q) !== -1) ? "" : "none";
-                });
-            });
-        }
-
-        // --- paginated request list (infinite scroll) ---
-        var reqScroll = document.getElementById("reqScroll");
-        var listNote = document.getElementById("listNote");
-        var loading = false;
-        var loadedCount = document.querySelectorAll("#reqScroll .req").length;
-        var hasMore = !!BEND.hasMore;
-        var oldestId = (function () {
-            var rows = document.querySelectorAll("#reqScroll .req");
-            if (!rows.length) { return 0; }
-            return parseInt(rows[rows.length - 1].getAttribute("data-open-request"), 10) || 0;
-        })();
+        // --- request list: search + pagination (rebound whenever the list is swapped) ---
+        var paused = false;
+        var reqScroll = null, listNote = null, loading = false, loadedCount = 0, hasMore = false, oldestId = 0;
 
         function updateNote() {
             if (!listNote) { return; }
@@ -411,26 +384,145 @@
             }).catch(function () {}).finally(function () { loading = false; });
         }
 
-        if (reqScroll && BEND.currentPath) {
-            reqScroll.addEventListener("scroll", function () {
-                if (reqScroll.scrollTop + reqScroll.clientHeight >= reqScroll.scrollHeight - 120) { loadMore(); }
-            });
+        function bindListControls(listRoot) {
+            paused = false;
+
+            var search = listRoot.querySelector("#search");
+            if (search) {
+                search.addEventListener("input", function () {
+                    var q = search.value.toLowerCase();
+                    listRoot.querySelectorAll("#reqScroll .req").forEach(function (row) {
+                        row.style.display = (!q || row.textContent.toLowerCase().indexOf(q) !== -1) ? "" : "none";
+                    });
+                });
+            }
+
+            var liveToggle = listRoot.querySelector("#liveToggle");
+            if (liveToggle) {
+                liveToggle.addEventListener("click", function () {
+                    paused = !paused;
+                    liveToggle.classList.toggle("paused", paused);
+                    liveToggle.lastChild.textContent = paused ? "Pausiert" : "Live";
+                });
+            }
+
+            reqScroll = listRoot.querySelector("#reqScroll");
+            listNote = listRoot.querySelector("#listNote");
+            loading = false;
+            hasMore = BEND.hasMore;
+            loadedCount = reqScroll ? reqScroll.querySelectorAll(".req").length : 0;
+            oldestId = 0;
+            if (reqScroll) {
+                var rows = reqScroll.querySelectorAll(".req");
+                if (rows.length) { oldestId = parseInt(rows[rows.length - 1].getAttribute("data-open-request"), 10) || 0; }
+                reqScroll.addEventListener("scroll", function () {
+                    if (reqScroll.scrollTop + reqScroll.clientHeight >= reqScroll.scrollHeight - 120) { loadMore(); }
+                });
+            }
             updateNote();
-            // if the first page does not fill the viewport, keep loading
-            if (hasMore && reqScroll.scrollHeight <= reqScroll.clientHeight + 4) { loadMore(); }
+            if (reqScroll && BEND.currentPath && hasMore && reqScroll.scrollHeight <= reqScroll.clientHeight + 4) { loadMore(); }
+        }
+
+        function initDetail() {
+            var detailRoot = document.querySelector(".col.detail");
+            if (!detailRoot) { return; }
+            applyStatusColors(detailRoot);
+            applyJson(detailRoot);
+            bindTabs(detailRoot);
+            bindDetailActions(detailRoot);
+        }
+
+        function initList() {
+            var listRoot = document.querySelector(".col.list");
+            if (!listRoot) { return; }
+            applyStatusColors(listRoot);
+            bindListControls(listRoot);
+        }
+
+        function markActiveEndpoint() {
+            document.querySelectorAll(".endpoints .ep").forEach(function (ep) {
+                var p = ep.querySelector("[data-open-path]");
+                ep.classList.toggle("active", !!p && p.getAttribute("data-open-path") === BEND.currentPath);
+            });
+        }
+
+        function markActiveRequest() {
+            document.querySelectorAll("#reqScroll .req").forEach(function (r) {
+                r.classList.toggle("active", r.getAttribute("data-open-request") === BEND.requestId);
+            });
+        }
+
+        // --- AJAX navigation: swap only the columns that change, so the endpoint
+        //     sidebar (and, when only the detail changes, the request list) keep
+        //     their scroll position and filter instead of the page reloading. ---
+        var navToken = 0;
+        function navigateTo(url, push, detailOnly) {
+            var token = ++navToken;
+            fetch(url, {headers: {"X-Requested-With": "fetch"}}).then(function (r) {
+                return r.text().then(function (html) { return {html: html, url: r.url}; });
+            }).then(function (res) {
+                if (token !== navToken) { return; }
+                var doc = new DOMParser().parseFromString(res.html, "text/html");
+                var newInspector = doc.querySelector(".inspector");
+                var newList = doc.querySelector(".col.list");
+                var newDetail = doc.querySelector(".col.detail");
+                var live = document.querySelector(".inspector");
+                if (!newInspector || !newDetail || !live) { window.location = url; return; }
+
+                ["data-current-path", "data-request-id", "data-request-total", "data-has-more", "data-uri"].forEach(function (a) {
+                    live.setAttribute(a, newInspector.getAttribute(a) || "");
+                });
+                refreshBend();
+
+                var curDetail = document.querySelector(".col.detail");
+                if (curDetail) { curDetail.replaceWith(document.importNode(newDetail, true)); }
+                initDetail();
+
+                if (!detailOnly && newList) {
+                    var curList = document.querySelector(".col.list");
+                    if (curList) { curList.replaceWith(document.importNode(newList, true)); }
+                    initList();
+                    markActiveEndpoint();
+                } else {
+                    markActiveRequest();
+                }
+
+                var target = document.getElementById("targetUrl");
+                if (target) { target.value = "http://localhost:8080" + (live.getAttribute("data-uri") || ""); }
+
+                if (doc.title) { document.title = doc.title; }
+                if (push) { history.pushState({detailOnly: !!detailOnly}, "", res.url || url); }
+            }).catch(function () { window.location = url; });
+        }
+
+        window.addEventListener("popstate", function () { navigateTo(location.href, false, false); });
+
+        // --- global click delegation ---
+        document.addEventListener("click", function (e) {
+            var openPath = e.target.closest("[data-open-path]");
+            if (openPath) { e.preventDefault(); navigateTo(pageUrl(openPath.getAttribute("data-open-path")), true, false); return; }
+            var openReq = e.target.closest("[data-open-request]");
+            if (openReq) { e.preventDefault(); navigateTo(pageUrl(BEND.currentPath, openReq.getAttribute("data-open-request")), true, true); return; }
+            var delPath = e.target.closest("[data-del-path]");
+            if (delPath) { e.stopPropagation(); confirmDeletePath(delPath.getAttribute("data-del-path")); return; }
+            var close = e.target.closest("[data-close-modal]");
+            if (close) { closeModal(close.getAttribute("data-close-modal")); return; }
+        });
+
+        // --- endpoint filter (sidebar, persistent) ---
+        var epSearch = document.getElementById("epSearch");
+        if (epSearch) {
+            epSearch.addEventListener("input", function () {
+                var q = epSearch.value.toLowerCase();
+                document.querySelectorAll(".endpoints .ep").forEach(function (row) {
+                    var path = row.querySelector(".ep-path");
+                    var text = path ? path.textContent.toLowerCase() : "";
+                    row.style.display = (!q || text.indexOf(q) !== -1) ? "" : "none";
+                });
+            });
         }
 
         // --- live tail via Server-Sent Events ---
-        var paused = false;
-        var liveToggle = document.getElementById("liveToggle");
-        if (liveToggle) {
-            liveToggle.addEventListener("click", function () {
-                paused = !paused;
-                liveToggle.classList.toggle("paused", paused);
-                liveToggle.lastChild.textContent = paused ? "Pausiert" : "Live";
-            });
-        }
-
         function bumpEndpoint(path) {
             var count = null;
             document.querySelectorAll(".endpoints .ep-count").forEach(function (el) {
@@ -477,6 +569,11 @@
                 if (ev.path === BEND.currentPath && !paused) { prependRequest(ev); }
             };
         }
+
+        // --- bootstrap ---
+        refreshBend();
+        initList();
+        initDetail();
     })();
 </script>
 </body>

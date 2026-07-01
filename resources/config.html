@@ -121,49 +121,110 @@
         }
         var isNil = function (id) { return /^[0-]*$/.test(id); };
 
+        // --- form column (rebound whenever the form is swapped in) ---
+        function bindForm() {
+            var form = document.querySelector(".form");
+            if (!form) { return; }
+
+            var btnSave = form.querySelector("#btnSave");
+            if (btnSave) {
+                btnSave.addEventListener("click", function () {
+                    var id = btnSave.getAttribute("data-id");
+                    var data = {
+                        path: form.querySelector("#path").value.replace(/^\/+/, ""),
+                        statusCode: form.querySelector("#statuscode").value,
+                        target: form.querySelector("#target").value,
+                        body: form.querySelector("#body").value,
+                        id: id
+                    };
+                    btnSave.disabled = true;
+                    fetch("/api/configs/", {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data)})
+                        .then(function (r) { return r.text().then(function (t) { return {ok: r.ok, text: t}; }); })
+                        .then(function (res) {
+                            // saving can add or rename an endpoint, so refresh fully
+                            if (res.ok) { window.location = isNil(id) ? "/configs/" : "/configs/" + id; }
+                            else { toast("Speichern fehlgeschlagen", res.text, "err"); }
+                        }).catch(function (e) { toast("Fehler", String(e), "err"); })
+                        .finally(function () { btnSave.disabled = false; });
+                });
+            }
+
+            var btnDelete = form.querySelector("#btnDelete");
+            if (btnDelete) {
+                if (isNil(btnDelete.getAttribute("data-id"))) { btnDelete.style.display = "none"; }
+                btnDelete.addEventListener("click", function () { confirmDelete(btnDelete.getAttribute("data-id")); });
+            }
+
+            var testInput = form.querySelector("#testInput");
+            if (testInput) {
+                var runTest = function () {
+                    var result = form.querySelector("#testResult");
+                    var pattern = form.querySelector("#path").value;
+                    var target = form.querySelector("#target").value;
+                    var val = testInput.value;
+                    if (!val) { result.innerHTML = ""; return; }
+                    var ok = false;
+                    try { ok = new RegExp("^" + (pattern.charAt(0) === "/" ? "" : "/") + pattern + "$").test(val.charAt(0) === "/" ? val : "/" + val); } catch (e) { result.innerHTML = '<span style="color:var(--err)">Ungültige Regex</span>'; return; }
+                    if (ok) {
+                        result.innerHTML = '<span style="color:var(--ok)">✓ Match</span>' + (target ? ' → Weiterleitung an <code style="color:var(--muted)">' + esc(target) + esc(val) + '</code>' : ' → Mock-Antwort');
+                    } else {
+                        result.innerHTML = '<span style="color:var(--err)">✕ Kein Match</span> — dieser Endpoint würde nicht greifen';
+                    }
+                };
+                testInput.addEventListener("input", runTest);
+                form.querySelector("#path").addEventListener("input", runTest);
+            }
+        }
+
+        function markActiveConfig() {
+            var btnSave = document.querySelector(".form #btnSave");
+            var id = btnSave ? btnSave.getAttribute("data-id") : "";
+            var active = (id && !isNil(id)) ? id : null;
+            document.querySelectorAll(".list .ep").forEach(function (ep) {
+                var p = ep.querySelector("[data-open-config]");
+                ep.classList.toggle("active", !!active && !!p && p.getAttribute("data-open-config") === active);
+            });
+        }
+
+        // --- AJAX navigation: swap only the form column so the endpoint list keeps
+        //     its scroll position and filter instead of the page reloading. ---
+        var navToken = 0;
+        function navigateConfig(url, push) {
+            var token = ++navToken;
+            fetch(url, {headers: {"X-Requested-With": "fetch"}}).then(function (r) {
+                return r.text().then(function (html) { return {html: html, url: r.url}; });
+            }).then(function (res) {
+                if (token !== navToken) { return; }
+                var doc = new DOMParser().parseFromString(res.html, "text/html");
+                var newForm = doc.querySelector(".form");
+                var curForm = document.querySelector(".form");
+                if (!newForm || !curForm) { window.location = url; return; }
+                curForm.replaceWith(document.importNode(newForm, true));
+                bindForm();
+                markActiveConfig();
+                if (doc.title) { document.title = doc.title; }
+                if (push) { history.pushState({}, "", res.url || url); }
+            }).catch(function () { window.location = url; });
+        }
+
+        window.addEventListener("popstate", function () { navigateConfig(location.href, false); });
+
+        // --- click delegation ---
         document.addEventListener("click", function (e) {
             var open = e.target.closest("[data-open-config]");
-            if (open) { window.location = "/configs/" + open.getAttribute("data-open-config"); return; }
-            if (e.target.closest("[data-new-config]")) { window.location = "/configs/"; return; }
+            if (open) { e.preventDefault(); navigateConfig("/configs/" + open.getAttribute("data-open-config"), true); return; }
+            if (e.target.closest("[data-new-config]")) { e.preventDefault(); navigateConfig("/configs/", true); return; }
             var del = e.target.closest("[data-del-config]");
             if (del) { e.stopPropagation(); confirmDelete(del.getAttribute("data-del-config")); return; }
             var close = e.target.closest("[data-close-modal]");
             if (close) { document.getElementById(close.getAttribute("data-close-modal")).classList.remove("open"); return; }
         });
 
-        // save
-        var btnSave = document.getElementById("btnSave");
-        if (btnSave) {
-            btnSave.addEventListener("click", function () {
-                var id = btnSave.getAttribute("data-id");
-                var data = {
-                    path: document.getElementById("path").value.replace(/^\/+/, ""),
-                    statusCode: document.getElementById("statuscode").value,
-                    target: document.getElementById("target").value,
-                    body: document.getElementById("body").value,
-                    id: id
-                };
-                btnSave.disabled = true;
-                fetch("/api/configs/", {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data)})
-                    .then(function (r) { return r.text().then(function (t) { return {ok: r.ok, text: t}; }); })
-                    .then(function (res) {
-                        if (res.ok) { window.location = isNil(id) ? "/configs/" : "/configs/" + id; }
-                        else { toast("Speichern fehlgeschlagen", res.text, "err"); }
-                    }).catch(function (e) { toast("Fehler", String(e), "err"); })
-                    .finally(function () { btnSave.disabled = false; });
-            });
-        }
-
-        // delete
+        // --- delete (confirm modal is persistent) ---
         var pendingDeleteId = null;
         function confirmDelete(id) {
             pendingDeleteId = id;
             document.getElementById("confirmModal").classList.add("open");
-        }
-        var btnDelete = document.getElementById("btnDelete");
-        if (btnDelete) {
-            if (isNil(btnDelete.getAttribute("data-id"))) { btnDelete.style.display = "none"; }
-            btnDelete.addEventListener("click", function () { confirmDelete(btnDelete.getAttribute("data-id")); });
         }
         document.getElementById("confirmOk").addEventListener("click", function () {
             document.getElementById("confirmModal").classList.remove("open");
@@ -174,7 +235,7 @@
             }).catch(function (e) { toast("Fehler", String(e), "err"); });
         });
 
-        // endpoint filter
+        // --- endpoint filter (sidebar, persistent) ---
         var epSearch = document.getElementById("epSearch");
         if (epSearch) {
             epSearch.addEventListener("input", function () {
@@ -187,26 +248,8 @@
             });
         }
 
-        // regex tester
-        var testInput = document.getElementById("testInput");
-        function runTest() {
-            var result = document.getElementById("testResult");
-            var pattern = document.getElementById("path").value;
-            var target = document.getElementById("target").value;
-            var val = testInput.value;
-            if (!val) { result.innerHTML = ""; return; }
-            var ok = false;
-            try { ok = new RegExp("^" + (pattern.charAt(0) === "/" ? "" : "/") + pattern + "$").test(val.charAt(0) === "/" ? val : "/" + val); } catch (e) { result.innerHTML = '<span style="color:var(--err)">Ungültige Regex</span>'; return; }
-            if (ok) {
-                result.innerHTML = '<span style="color:var(--ok)">✓ Match</span>' + (target ? ' → Weiterleitung an <code style="color:var(--muted)">' + esc(target) + esc(val) + '</code>' : ' → Mock-Antwort');
-            } else {
-                result.innerHTML = '<span style="color:var(--err)">✕ Kein Match</span> — dieser Endpoint würde nicht greifen';
-            }
-        }
-        if (testInput) {
-            testInput.addEventListener("input", runTest);
-            document.getElementById("path").addEventListener("input", runTest);
-        }
+        // --- bootstrap ---
+        bindForm();
     })();
 </script>
 </body>
