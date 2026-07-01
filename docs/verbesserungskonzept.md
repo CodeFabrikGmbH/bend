@@ -1,6 +1,6 @@
 # Verbesserungskonzept „bend"
 
-> Stand: 2026-07-01 · Status: Entwurf zur Abstimmung
+> Stand: 2026-07-01 · Status: **Umgesetzt** (Phasen 0–3, Branch `refactor`)
 
 ## Zweck dieses Dokuments
 
@@ -12,6 +12,43 @@ Verbesserung.
 Bewusst akzeptierte Entscheidungen (kein Handlungsbedarf) sind am Ende unter
 [Bewusst akzeptiert](#bewusst-akzeptiert) dokumentiert, damit sie nicht immer
 wieder neu diskutiert werden.
+
+Die Analyse-Abschnitte (1–3) beschreiben den **Ausgangszustand**; sie bleiben als
+Begründung stehen. Der aktuelle Umsetzungsstand steht direkt darunter.
+
+---
+
+## Umsetzungsstand
+
+Alle vier Phasen sind auf dem Branch `refactor` umgesetzt, verifiziert
+(Build/vet/test grün; die Oberfläche im Browser geprüft) und in abgegrenzten
+Commits festgehalten:
+
+| Phase | Commit | Status |
+|-------|--------|--------|
+| 0 — Sicherheit (S1, S2, S6, S7) | `5f4aab2` | ✅ |
+| 1a — Single-Binary, Template-Caching, slog, Graceful Shutdown | `39bf4e2` | ✅ |
+| 1b — Dependencies (bbolt, golang-jwt, gocloak v13) | `5e1b1eb` | ✅ |
+| 2.1 — Dashboard-Performance | `af731c5` | ✅ |
+| 2 UX — Live-Inspector-Redesign | `cb448e7` | ✅ |
+| 3 — Live-Tail (SSE), Filter, Listen-Begrenzung | `425be52` | ✅ |
+
+**Abweichungen vom ursprünglichen Plan**
+- **Router:** bewusst kein Dritt-Router (chi/gorilla). Für das Catch-all-Pfadmodell
+  bringt er kaum Robustheitsgewinn; stattdessen expliziter `http.NewServeMux`.
+- **Regex-Tester** (ursprünglich Phase 3) wurde bereits mit dem Endpoint-Editor in
+  Phase 2 umgesetzt.
+- **Paginierung:** serverseitige Begrenzung auf die neuesten 200 mit Indikator statt
+  Cursor-Paginierung — genügt dank der leichtgewichtigen Projektion aus 2.1.
+- **SSE-`WriteTimeout`:** der in Phase 0 notierte Vorbehalt ist gelöst — die
+  Stream-Verbindung deaktiviert ihre Write-Deadline per `http.ResponseController`,
+  der globale `WriteTimeout` bleibt für alle anderen Routen erhalten.
+
+**Noch offen / zu beachten**
+- **gocloak v13** ist nur compile-verifiziert — der echte Login-Flow gehört einmal
+  gegen eine Keycloak-Instanz getestet, bevor es produktiv geht.
+- **`COOKIE_SECURE`** ist standardmäßig `true`; für lokalen HTTP-Betrieb mit aktivem
+  Keycloak `COOKIE_SECURE=false` setzen.
 
 ---
 
@@ -226,17 +263,17 @@ Workflow ab.
 
 ## 4. Roadmap
 
-| Phase | Inhalt | Aufwand | Nutzen |
+| Phase | Inhalt | Aufwand | Status |
 |-------|--------|---------|--------|
-| **0 — Sofort** | S1, S2, S6, S7 (Login-POST, API-Auth, Body-Limit + Timeouts, Cookie-Flags) | klein | Schließt kritische Sicherheitslücken |
-| **1 — Fundament** | embed.FS + Template-Caching, Deps/Go-Update, Logging, Router | mittel | Stabil, wartbar, Single-Binary |
-| **2 — Performance & UX-Kern** | Dashboard-Performance (2.1), Layout+Navigation, Request-Liste, fetch/Toasts, JSON-Rendering | mittel | Behebt die Verlangsamung + spürbarer Bedienungssprung |
-| **3 — Komfort** | Live-Tail (SSE), Suche/Filter, Regex-Tester, Responsive | mittel | Angenehm & konkurrenzfähig |
+| **0 — Sofort** | S1, S2, S6, S7 (Login-POST, API-Auth, Body-Limit + Timeouts, Cookie-Flags) | klein | ✅ |
+| **1 — Fundament** | embed.FS + Template-Caching, Deps/Go-Update, Logging | mittel | ✅ |
+| **2 — Performance & UX-Kern** | Dashboard-Performance (2.1), Layout+Navigation, Request-Liste, fetch/Toasts, JSON-Rendering | mittel | ✅ |
+| **3 — Komfort** | Live-Tail (SSE), Suche/Filter, Regex-Tester, Responsive | mittel | ✅ |
 
-Phase 0 ist unabhängig vom Rest und sollte zuerst kommen — kleine, klar
-abgegrenzte Änderungen mit hohem Risiko-Payoff. Das Performance-Problem (2.1) ist
-das wichtigste Bedienungsthema und in Phase 2 eingeplant; es kann bei Bedarf
-vorgezogen werden, da es unabhängig vom UI-Redesign umsetzbar ist.
+Ursprünglich war Phase 0 als unabhängiger, risikoarmer Auftakt geplant, gefolgt
+vom Fundament und den beiden UX-Phasen. Die Umsetzung ist dieser Reihenfolge
+gefolgt; Details und Abweichungen stehen oben unter
+[Umsetzungsstand](#umsetzungsstand).
 
 ---
 
