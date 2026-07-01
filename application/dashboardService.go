@@ -14,6 +14,8 @@ type Path struct {
 type RequestAbstract struct {
 	ID        string `json:"ID"`
 	Timestamp string `json:"timestamp"`
+	Method    string `json:"method"`
+	Status    int    `json:"status"`
 }
 
 type RequestDetails struct {
@@ -99,6 +101,8 @@ func (ds DashboardService) getRequests(path string) []RequestAbstract {
 		dashboardRequests = append(dashboardRequests, RequestAbstract{
 			ID:        s.ID,
 			Timestamp: time.Unix(0, s.Timestamp).Format("2 Jan 2006 15:04:05"),
+			Method:    s.Method,
+			Status:    s.Response.ResponseStatusCode,
 		})
 	}
 	return dashboardRequests

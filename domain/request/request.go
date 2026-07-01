@@ -20,9 +20,14 @@ func (r Request) ToJson() string {
 }
 
 // Summary is a lightweight projection of a Request used for list views. It
-// deliberately omits the body, headers and response so those large fields are
-// not read into memory when only an overview is needed.
+// carries only the fields needed to render a scannable list (method, status)
+// and deliberately omits the body, headers and response payload so those large
+// fields are not read into memory when only an overview is needed.
 type Summary struct {
 	ID        string `json:"ID"`
 	Timestamp int64  `json:"timestamp"`
+	Method    string `json:"method"`
+	Response  struct {
+		ResponseStatusCode int `json:"responseStatusCode"`
+	} `json:"response"`
 }

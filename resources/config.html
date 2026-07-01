@@ -1,137 +1,194 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" type="text/css" href="/static/css/styles.css"/>
-    <title></title>
-    <script>
-        let API_URL = "/api/configs/";
-        let PAGE_URL = "/configs/";
-
-        function openPath(id) {
-            if (id) {
-                window.location = PAGE_URL + id;
-            } else {
-                window.location = PAGE_URL;
-            }
-        }
-
-        function deletePath(id) {
-            let r = confirm("Delete this configuration?");
-            if (r === true) {
-                let sendUrl = API_URL + id;
-
-                let xmlHttp = new XMLHttpRequest();
-                xmlHttp.onreadystatechange = function () {
-                    if (xmlHttp.readyState === XMLHttpRequest.DONE) {
-                        if (xmlHttp.status === 200) {
-                            window.location = PAGE_URL;
-                        } else {
-                            window.alert(xmlHttp.responseText);
-                        }
-                    }
-                }
-                xmlHttp.open("DELETE", sendUrl, true); // true for asynchronous
-                xmlHttp.send(null);
-            }
-        }
-
-        function save(id) {
-            let path = document.getElementById("path").value.replace(/^\/+/g, '');
-            let statuscode = document.getElementById("statuscode").value;
-            let target = document.getElementById("target").value;
-            let body = document.getElementById("body").value;
-            let data = JSON.stringify({ path: path, statuscode: statuscode, target: target, body: body, id: id });
-
-            let xmlHttp = new XMLHttpRequest();
-
-            xmlHttp.onreadystatechange = function () {
-                if (xmlHttp.readyState === XMLHttpRequest.DONE) {
-                    if (xmlHttp.status === 200) {
-                        if (/^[0-]*$/.test(id)) {
-                            window.location = PAGE_URL
-                        } else {
-                            window.location = PAGE_URL + id;
-                        }
-                    } else {
-                        window.alert(xmlHttp.responseText);
-                    }
-                }
-            }
-
-            xmlHttp.open("PUT", API_URL, true); // true for asynchronous
-            xmlHttp.send(data);
-        }
-
-        function init() {
-            let openReadme = document.getElementById("openReadme");
-            openReadme.onclick = () => {
-                window.open('/readme');
-            };
-        }
-
-        window.onload = init;
-    </script>
+    <title>bend — Endpoints</title>
 </head>
-
 <body>
-<div class="page-header">
-    <p class="page-header-title">Bend</p>
-    <button id="openReadme">?</button>
-</div>
+<div class="app">
+    <header class="topbar">
+        <div class="brand">bend<span class="dot">.</span></div>
+        <nav class="nav">
+            <a href="/dashboard/">Requests</a>
+            <a class="active" href="/configs/">Endpoints</a>
+            <a href="/readme/" target="_blank" rel="noopener">Docs</a>
+        </nav>
+        <form class="logout-form" method="post" action="/login">
+            <input type="hidden" name="logout" value="true"/>
+            <button class="logout-btn" type="submit">Logout</button>
+        </form>
+    </header>
 
-<div style="width: 100%">
-    <table class="table-style">
-        <tr>
-            <th>Path</th>
-            <th onclick="openPath()">+</th>
-        </tr>
-        {{ with .Configs }}
-        {{ range . }}
-        <tr>
-            <td onclick="openPath({{.Id}})">{{.Path}}</td>
-            <td onclick="deletePath({{.Id}})"><i class="gg-trash"></i></td>
-        </tr>
-        {{ end }}
-        {{ end }}
-    </table>
+    <div class="editor">
+        <section class="col list">
+            <div class="col-head"><h2>Endpoints</h2></div>
+            <div class="scroll">
+                {{ with .Configs }}
+                {{ range . }}
+                <div class="ep {{ if eq .Id $.CurrentConfig.Id }}active{{ end }}">
+                    <span class="ep-path" data-open-config="{{ .Id }}">{{ .Path }}</span>
+                    <span class="ep-trash" data-del-config="{{ .Id }}" title="Endpoint löschen" aria-label="Endpoint löschen">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                    </span>
+                </div>
+                {{ end }}
+                {{ else }}
+                <div class="col-empty">Noch keine Endpoints.</div>
+                {{ end }}
+            </div>
+            <div class="ep-add-wrap" style="padding:12px 14px;border-top:1px solid var(--line)">
+                <button class="btn block" data-new-config>+ Endpoint anlegen</button>
+            </div>
+        </section>
 
-    <div class="table-style" style="width: 100%">
-        {{ with .CurrentConfig }}
-        <table class="request-details-style">
-                <tr>
-                    <td>Path</td>
-                    <td>
-                        <input style="width: 100%" type="text" id="path" value="{{.Path}}">
-                    </td>
-                </tr>
-                <tr>
-                    <td>Target</td>
-                    <td>
-                        <input style="width: 100%" type="text" id="target" value="{{.Target}}">
-                        When this is empty the default values below are returned automatically for incoming requests.
-                    </td>
-                </tr>
+        <div class="form">
+            {{ with .CurrentConfig }}
+            <h1>{{ if .Path }}{{ .Path }}{{ else }}Neuer Endpoint{{ end }}</h1>
+            <p class="lead">Regeln, was bend mit eingehenden Requests auf diesem Pfad macht — an ein Ziel weiterleiten oder eine Mock-Antwort liefern.</p>
 
-                <tr>
-                    <td>Default StatusCode</td>
-                    <td>
-                        <input style="width: 100%" type="text" id="statuscode" value="{{.Response.StatusCode}}">
-                    </td>
-                </tr>
+            <div class="field">
+                <label for="path">Pfad</label>
+                <input class="input" type="text" id="path" value="{{ .Path }}"/>
+                <div class="hint">Reguläre Ausdrücke erlaubt, z.&nbsp;B. <code>/api/aggregate/\d{4}-\d{2}-\d{2}</code></div>
+            </div>
 
-                <tr>
-                    <td>Default Body</td>
-                    <td>
-                        <textarea style="width: 100%; height: 200px;" type="text" id="body">{{.Response.Body}}</textarea>
-                    </td>
-                </tr>
-        </table>
-        <button class="button" style="width: 200px;" onclick="save({{.Id}})">Save</button>
-        {{ end }}
+            <div class="field">
+                <label for="target">Ziel (Target)</label>
+                <input class="input" type="text" id="target" value="{{ .Target }}" placeholder="https://192.168.1.42:8443 — leer lassen für Mock-Antwort"/>
+                <div class="hint">Ist ein Ziel gesetzt, leitet bend weiter. Ist es leer, wird die Mock-Antwort unten zurückgegeben.</div>
+            </div>
+
+            <div class="row2">
+                <div class="field">
+                    <label for="statuscode">Mock-Statuscode</label>
+                    <input class="input" type="text" id="statuscode" value="{{ .Response.StatusCode }}"/>
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="body">Mock-Body</label>
+                <textarea class="textarea" id="body">{{ .Response.Body }}</textarea>
+            </div>
+
+            <div class="field">
+                <label for="testInput">Regex-Tester</label>
+                <input class="input" type="text" id="testInput" placeholder="Test-Pfad eingeben, z. B. /api/aggregate/2021-08-15"/>
+                <div class="hint" id="testResult"></div>
+            </div>
+
+            <div class="actions">
+                <button class="btn primary" id="btnSave" data-id="{{ .Id }}">Speichern</button>
+                <button class="btn danger" id="btnDelete" data-id="{{ .Id }}">Endpoint löschen</button>
+            </div>
+            {{ end }}
+        </div>
     </div>
 </div>
 
+<!-- Confirm modal -->
+<div class="modal-backdrop" id="confirmModal">
+    <div class="modal">
+        <h3>Endpoint löschen</h3>
+        <p id="confirmMsg">Diesen Endpoint löschen?</p>
+        <div class="modal-actions">
+            <button class="btn" data-close-modal="confirmModal">Abbrechen</button>
+            <button class="btn danger" id="confirmOk">Löschen</button>
+        </div>
+    </div>
+</div>
 
+<div class="toasts" id="toasts"></div>
+
+<script>
+    (function () {
+        "use strict";
+        function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]; }); }
+        function toast(title, desc, kind) {
+            var el = document.createElement("div");
+            el.className = "toast " + (kind || "");
+            el.innerHTML = '<div><div class="tt">' + esc(title) + '</div>' + (desc ? '<div class="td">' + esc(desc) + '</div>' : '') + '</div>';
+            document.getElementById("toasts").appendChild(el);
+            setTimeout(function () { el.style.transition = "opacity .3s"; el.style.opacity = "0"; }, 3400);
+            setTimeout(function () { el.remove(); }, 3800);
+        }
+        var isNil = function (id) { return /^[0-]*$/.test(id); };
+
+        document.addEventListener("click", function (e) {
+            var open = e.target.closest("[data-open-config]");
+            if (open) { window.location = "/configs/" + open.getAttribute("data-open-config"); return; }
+            if (e.target.closest("[data-new-config]")) { window.location = "/configs/"; return; }
+            var del = e.target.closest("[data-del-config]");
+            if (del) { e.stopPropagation(); confirmDelete(del.getAttribute("data-del-config")); return; }
+            var close = e.target.closest("[data-close-modal]");
+            if (close) { document.getElementById(close.getAttribute("data-close-modal")).classList.remove("open"); return; }
+        });
+
+        // save
+        var btnSave = document.getElementById("btnSave");
+        if (btnSave) {
+            btnSave.addEventListener("click", function () {
+                var id = btnSave.getAttribute("data-id");
+                var data = {
+                    path: document.getElementById("path").value.replace(/^\/+/, ""),
+                    statusCode: document.getElementById("statuscode").value,
+                    target: document.getElementById("target").value,
+                    body: document.getElementById("body").value,
+                    id: id
+                };
+                btnSave.disabled = true;
+                fetch("/api/configs/", {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data)})
+                    .then(function (r) { return r.text().then(function (t) { return {ok: r.ok, text: t}; }); })
+                    .then(function (res) {
+                        if (res.ok) { window.location = isNil(id) ? "/configs/" : "/configs/" + id; }
+                        else { toast("Speichern fehlgeschlagen", res.text, "err"); }
+                    }).catch(function (e) { toast("Fehler", String(e), "err"); })
+                    .finally(function () { btnSave.disabled = false; });
+            });
+        }
+
+        // delete
+        var pendingDeleteId = null;
+        function confirmDelete(id) {
+            pendingDeleteId = id;
+            document.getElementById("confirmModal").classList.add("open");
+        }
+        var btnDelete = document.getElementById("btnDelete");
+        if (btnDelete) {
+            if (isNil(btnDelete.getAttribute("data-id"))) { btnDelete.style.display = "none"; }
+            btnDelete.addEventListener("click", function () { confirmDelete(btnDelete.getAttribute("data-id")); });
+        }
+        document.getElementById("confirmOk").addEventListener("click", function () {
+            document.getElementById("confirmModal").classList.remove("open");
+            if (!pendingDeleteId) { return; }
+            fetch("/api/configs/" + pendingDeleteId, {method: "DELETE"}).then(function (r) {
+                if (r.ok) { window.location = "/configs/"; }
+                else { return r.text().then(function (t) { toast("Löschen fehlgeschlagen", t, "err"); }); }
+            }).catch(function (e) { toast("Fehler", String(e), "err"); });
+        });
+
+        // regex tester
+        var testInput = document.getElementById("testInput");
+        function runTest() {
+            var result = document.getElementById("testResult");
+            var pattern = document.getElementById("path").value;
+            var target = document.getElementById("target").value;
+            var val = testInput.value;
+            if (!val) { result.innerHTML = ""; return; }
+            var ok = false;
+            try { ok = new RegExp("^" + (pattern.charAt(0) === "/" ? "" : "/") + pattern + "$").test(val.charAt(0) === "/" ? val : "/" + val); } catch (e) { result.innerHTML = '<span style="color:var(--err)">Ungültige Regex</span>'; return; }
+            if (ok) {
+                result.innerHTML = '<span style="color:var(--ok)">✓ Match</span>' + (target ? ' → Weiterleitung an <code style="color:var(--muted)">' + esc(target) + esc(val) + '</code>' : ' → Mock-Antwort');
+            } else {
+                result.innerHTML = '<span style="color:var(--err)">✕ Kein Match</span> — dieser Endpoint würde nicht greifen';
+            }
+        }
+        if (testInput) {
+            testInput.addEventListener("input", runTest);
+            document.getElementById("path").addEventListener("input", runTest);
+        }
+    })();
+</script>
 </body>
+</html>
