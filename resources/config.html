@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link rel="stylesheet" type="text/css" href="/static/css/styles.css?v=0.6.5"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css?v=0.7.4"/>
     <title>bend — Endpoints</title>
 </head>
 <body>
@@ -33,9 +33,9 @@
             <div class="scroll">
                 {{ with .Configs }}
                 {{ range . }}
-                <div class="ep {{ if eq .Id $.CurrentConfig.Id }}active{{ end }}">
-                    <span class="ep-path" data-open-config="{{ .Id }}">{{ .Path }}</span>
-                    <span class="ep-trash" data-del-config="{{ .Id }}" title="Endpoint löschen" aria-label="Endpoint löschen">
+                <div class="ep {{ if eq .Id $.CurrentConfig.Id }}active{{ end }}" data-open-config="{{ .Id }}" role="button" tabindex="0">
+                    <span class="ep-path">{{ .Path }}</span>
+                    <span class="ep-trash" data-del-config="{{ .Id }}" title="Endpoint löschen" aria-label="Endpoint löschen" role="button" tabindex="0">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
                     </span>
                 </div>
@@ -96,8 +96,8 @@
 <!-- Confirm modal -->
 <div class="modal-backdrop" id="confirmModal">
     <div class="modal">
-        <h3>Endpoint löschen</h3>
-        <p id="confirmMsg">Diesen Endpoint löschen?</p>
+        <h3 id="confirmTitle">Bestätigen</h3>
+        <p id="confirmMsg"></p>
         <div class="modal-actions">
             <button class="btn" data-close-modal="confirmModal">Abbrechen</button>
             <button class="btn danger" id="confirmOk">Löschen</button>
@@ -121,10 +121,30 @@
         }
         var isNil = function (id) { return /^[0-]*$/.test(id); };
 
+        // --- unsaved-changes tracking: the AJAX navigation swaps the form out,
+        //     so without a guard edits would be lost silently. ---
+        var dirty = false;
+        window.addEventListener("beforeunload", function (e) {
+            if (dirty) { e.preventDefault(); e.returnValue = ""; }
+        });
+        function guardNavigation() {
+            if (!dirty) { return Promise.resolve(true); }
+            return confirmAction("Ungespeicherte Änderungen", "Die Änderungen an diesem Endpoint wurden nicht gespeichert. Verwerfen?", "Verwerfen").then(function (ok) {
+                if (ok) { dirty = false; }
+                return ok;
+            });
+        }
+
         // --- form column (rebound whenever the form is swapped in) ---
         function bindForm() {
             var form = document.querySelector(".form");
             if (!form) { return; }
+
+            dirty = false;
+            ["#path", "#target", "#statuscode", "#body"].forEach(function (sel) {
+                var el = form.querySelector(sel);
+                if (el) { el.addEventListener("input", function () { dirty = true; }); }
+            });
 
             var btnSave = form.querySelector("#btnSave");
             if (btnSave) {
@@ -142,7 +162,7 @@
                         .then(function (r) { return r.text().then(function (t) { return {ok: r.ok, text: t}; }); })
                         .then(function (res) {
                             // saving can add or rename an endpoint, so refresh fully
-                            if (res.ok) { window.location = isNil(id) ? "/configs/" : "/configs/" + id; }
+                            if (res.ok) { dirty = false; window.location = isNil(id) ? "/configs/" : "/configs/" + id; }
                             else { toast("Speichern fehlgeschlagen", res.text, "err"); }
                         }).catch(function (e) { toast("Fehler", String(e), "err"); })
                         .finally(function () { btnSave.disabled = false; });
@@ -181,14 +201,14 @@
             var id = btnSave ? btnSave.getAttribute("data-id") : "";
             var active = (id && !isNil(id)) ? id : null;
             document.querySelectorAll(".list .ep").forEach(function (ep) {
-                var p = ep.querySelector("[data-open-config]");
-                ep.classList.toggle("active", !!active && !!p && p.getAttribute("data-open-config") === active);
+                ep.classList.toggle("active", !!active && ep.getAttribute("data-open-config") === active);
             });
         }
 
         // --- AJAX navigation: swap only the form column so the endpoint list keeps
         //     its scroll position and filter instead of the page reloading. ---
         var navToken = 0;
+        var currentUrl = location.href;
         function navigateConfig(url, push) {
             var token = ++navToken;
             fetch(url, {headers: {"X-Requested-With": "fetch"}}).then(function (r) {
@@ -204,35 +224,86 @@
                 markActiveConfig();
                 if (doc.title) { document.title = doc.title; }
                 if (push) { history.pushState({}, "", res.url || url); }
+                currentUrl = res.url || url;
             }).catch(function () { window.location = url; });
         }
 
-        window.addEventListener("popstate", function () { navigateConfig(location.href, false); });
+        window.addEventListener("popstate", function () {
+            guardNavigation().then(function (ok) {
+                if (ok) { navigateConfig(location.href, false); }
+                else { history.pushState({}, "", currentUrl); }
+            });
+        });
 
         // --- click delegation ---
         document.addEventListener("click", function (e) {
-            var open = e.target.closest("[data-open-config]");
-            if (open) { e.preventDefault(); navigateConfig("/configs/" + open.getAttribute("data-open-config"), true); return; }
-            if (e.target.closest("[data-new-config]")) { e.preventDefault(); navigateConfig("/configs/", true); return; }
             var del = e.target.closest("[data-del-config]");
             if (del) { e.stopPropagation(); confirmDelete(del.getAttribute("data-del-config")); return; }
+            var open = e.target.closest("[data-open-config]");
+            if (open) {
+                e.preventDefault();
+                var url = "/configs/" + open.getAttribute("data-open-config");
+                guardNavigation().then(function (ok) { if (ok) { navigateConfig(url, true); } });
+                return;
+            }
+            if (e.target.closest("[data-new-config]")) {
+                e.preventDefault();
+                guardNavigation().then(function (ok) { if (ok) { navigateConfig("/configs/", true); } });
+                return;
+            }
             var close = e.target.closest("[data-close-modal]");
-            if (close) { document.getElementById(close.getAttribute("data-close-modal")).classList.remove("open"); return; }
+            if (close) {
+                document.getElementById(close.getAttribute("data-close-modal")).classList.remove("open");
+                settleConfirm(false);
+                return;
+            }
         });
 
-        // --- delete (confirm modal is persistent) ---
-        var pendingDeleteId = null;
-        function confirmDelete(id) {
-            pendingDeleteId = id;
+        // --- generic confirm modal (promise-based, persistent) ---
+        var confirmResolver = null;
+        function confirmAction(title, msg, okLabel) {
+            document.getElementById("confirmTitle").textContent = title;
+            document.getElementById("confirmMsg").textContent = msg;
+            document.getElementById("confirmOk").textContent = okLabel || "OK";
             document.getElementById("confirmModal").classList.add("open");
+            return new Promise(function (resolve) { confirmResolver = resolve; });
+        }
+        function settleConfirm(value) {
+            if (confirmResolver) { confirmResolver(value); confirmResolver = null; }
         }
         document.getElementById("confirmOk").addEventListener("click", function () {
             document.getElementById("confirmModal").classList.remove("open");
-            if (!pendingDeleteId) { return; }
-            fetch("/api/configs/" + pendingDeleteId, {method: "DELETE"}).then(function (r) {
-                if (r.ok) { window.location = "/configs/"; }
-                else { return r.text().then(function (t) { toast("Löschen fehlgeschlagen", t, "err"); }); }
-            }).catch(function (e) { toast("Fehler", String(e), "err"); });
+            settleConfirm(true);
+        });
+
+        // --- delete ---
+        function confirmDelete(id) {
+            confirmAction("Endpoint löschen", "Diesen Endpoint unwiderruflich löschen?", "Löschen").then(function (ok) {
+                if (!ok) { return; }
+                fetch("/api/configs/" + id, {method: "DELETE"}).then(function (r) {
+                    if (r.ok) { window.location = "/configs/"; }
+                    else { return r.text().then(function (t) { toast("Löschen fehlgeschlagen", t, "err"); }); }
+                }).catch(function (e) { toast("Fehler", String(e), "err"); });
+            });
+        }
+
+        // --- keyboard: Esc closes the modal, Enter/Space activates focused rows ---
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") {
+                var openModals = document.querySelectorAll(".modal-backdrop.open");
+                if (openModals.length) {
+                    openModals.forEach(function (b) { b.classList.remove("open"); });
+                    settleConfirm(false);
+                }
+                return;
+            }
+            if (e.key === "Enter" || e.key === " ") {
+                var t = e.target;
+                if (t && t.getAttribute && (t.hasAttribute("data-open-config") || t.hasAttribute("data-del-config"))) {
+                    e.preventDefault();
+                    t.click();
+                }
+            }
         });
 
         // --- endpoint filter (sidebar, persistent) ---

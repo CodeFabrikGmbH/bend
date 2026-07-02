@@ -14,6 +14,7 @@ type Path struct {
 type RequestAbstract struct {
 	ID        string `json:"ID"`
 	Timestamp string `json:"timestamp"`
+	Unix      int64  `json:"unix"` // milliseconds, for client-side relative times
 	Method    string `json:"method"`
 	Status    int    `json:"status"`
 }
@@ -131,6 +132,7 @@ func newRequestAbstract(s request.Summary) RequestAbstract {
 	return RequestAbstract{
 		ID:        s.ID,
 		Timestamp: time.Unix(0, s.Timestamp).Format("2 Jan 2006 15:04:05"),
+		Unix:      s.Timestamp / int64(time.Millisecond),
 		Method:    s.Method,
 		Status:    s.Response.ResponseStatusCode,
 	}

@@ -12,4 +12,5 @@ type Repository interface {
 
 	DeletePath(path string) error
 	DeleteRequestForPath(path string, id string) error
+	DeleteAllRequests() error
 }

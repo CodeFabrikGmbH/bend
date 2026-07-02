@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link rel="stylesheet" type="text/css" href="/static/css/styles.css?v=0.6.5"/>
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css?v=0.7.4"/>
     <title>bend — Requests</title>
 </head>
 <body>
@@ -15,6 +15,13 @@
             <a href="/configs/">Endpoints</a>
             <a href="/readme/">Docs</a>
         </nav>
+        <div class="catchurl" title="Basis-URL für eingehende Requests — kopieren und als Webhook-Ziel eintragen">
+            <span class="label">Catch&nbsp;URL</span>
+            <code id="catchUrl"></code>
+            <button class="iconbtn" id="copyCatch" aria-label="Catch-URL kopieren">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            </button>
+        </div>
         <form class="logout-form" method="post" action="/login">
             <input type="hidden" name="logout" value="true"/>
             <button class="logout-btn" type="submit">Logout</button>
@@ -29,7 +36,12 @@
          data-uri="{{ .RequestDetails.Uri }}">
         <!-- Endpoints -->
         <section class="col endpoints">
-            <div class="col-head"><h2>Endpoints</h2></div>
+            <div class="col-head">
+                <h2>Endpoints</h2>
+                {{ if .Paths }}
+                <button class="clear-all-btn" id="clearAll" title="Alle aufgezeichneten Requests löschen">Clear all</button>
+                {{ end }}
+            </div>
             <div class="listtools">
                 <div class="search">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -39,16 +51,21 @@
             <div class="scroll">
                 {{ with .Paths }}
                 {{ range . }}
-                <div class="ep {{ if eq .Path $.CurrentPath }}active{{ end }}">
-                    <span class="ep-path" data-open-path="{{ .Path }}">{{ .Path }}</span>
-                    <span class="ep-count" data-open-path="{{ .Path }}">{{ .Count }}</span>
-                    <span class="ep-trash" data-del-path="{{ .Path }}" title="Alle Requests dieses Pfads löschen" aria-label="Pfad löschen">
+                <div class="ep {{ if eq .Path $.CurrentPath }}active{{ end }}" data-open-path="{{ .Path }}" role="button" tabindex="0">
+                    <span class="ep-path">{{ .Path }}</span>
+                    <span class="ep-count">{{ .Count }}</span>
+                    <span class="ep-trash" data-del-path="{{ .Path }}" title="Alle Requests dieses Pfads löschen" aria-label="Pfad löschen" role="button" tabindex="0">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
                     </span>
                 </div>
                 {{ end }}
                 {{ else }}
-                <div class="col-empty">Noch keine Requests.<br>Zeig einen Client auf diesen Server.</div>
+                <div class="col-empty">
+                    <p>Noch keine Requests.</p>
+                    <p class="hint-sub">Zeig einen Client oder Webhook auf diese URL — zum Beispiel:</p>
+                    <pre class="empty-curl" id="curlExample"></pre>
+                    <button class="btn" id="copyCurlExample">Beispiel kopieren</button>
+                </div>
                 {{ end }}
             </div>
             {{ if gt .PathTotal (len .Paths) }}
@@ -75,13 +92,13 @@
             <div class="scroll" id="reqScroll">
                 {{ with .Requests }}
                 {{ range . }}
-                <div class="req {{ if eq .ID $.RequestDetails.ID }}active{{ end }}" data-open-request="{{ .ID }}">
+                <div class="req {{ if eq .ID $.RequestDetails.ID }}active{{ end }}" data-open-request="{{ .ID }}" role="button" tabindex="0">
                     <span class="method m-{{ .Method }}">{{ .Method }}</span>
                     <div class="req-mid">
-                        <div class="req-time">{{ .Timestamp }}</div>
+                        <div class="req-time" data-ts="{{ .Unix }}" title="{{ .Timestamp }}">{{ .Timestamp }}</div>
                         <div class="req-id">#{{ .ID }}</div>
                     </div>
-                    <span class="status" data-status="{{ .Status }}">{{ if .Status }}{{ .Status }}{{ else }}—{{ end }}</span>
+                    <span class="status" data-status="{{ .Status }}">{{ if gt .Status 0 }}{{ .Status }}{{ else if lt .Status 0 }}✕{{ else }}—{{ end }}</span>
                 </div>
                 {{ end }}
                 {{ else }}
@@ -99,26 +116,27 @@
             <div class="scroll">
                 {{ with .RequestDetails }}
                 {{ if .ID }}
-                <div class="detail-head">
+                <div class="detail-head" data-method="{{ .Method }}" data-host="{{ .Host }}">
                     <div class="detail-title">
                         <span class="method m-{{ .Method }}">{{ .Method }}</span>
                         <span class="p">{{ $.CurrentPath }}</span>
                     </div>
                     <div class="detail-sub">
                         <span><b>{{ .Timestamp }}</b></span>
-                        <span>Status <b class="status" data-status="{{ .Response.ResponseStatusCode }}">{{ if .Response.ResponseStatusCode }}{{ .Response.ResponseStatusCode }}{{ else }}—{{ end }}</b></span>
+                        <span>Status <b class="status" data-status="{{ .Response.ResponseStatusCode }}">{{ if gt .Response.ResponseStatusCode 0 }}{{ .Response.ResponseStatusCode }}{{ else if lt .Response.ResponseStatusCode 0 }}✕{{ else }}—{{ end }}</b></span>
                         <span>Host <b>{{ .Host }}</b></span>
                         <span>ID <b>#{{ .ID }}</b></span>
                     </div>
                     <div class="actions">
                         <button class="btn primary" id="btnSend">An Ziel senden</button>
+                        <button class="btn" id="btnCurl">Als cURL kopieren</button>
                         <button class="btn danger" id="btnDelete">Request löschen</button>
                     </div>
                 </div>
 
                 <div class="tabs">
                     <button class="tab active" data-tab="request">Request</button>
-                    <button class="tab" data-tab="response">Response</button>
+                    <button class="tab" data-tab="response">Response{{ if .Response.Error }}<span class="status tab-badge err-badge">✕</span>{{ else if .Response.ResponseStatusCode }}<span class="status tab-badge" data-status="{{ .Response.ResponseStatusCode }}">{{ .Response.ResponseStatusCode }}</span>{{ end }}</button>
                 </div>
 
                 <div class="pane" data-pane="request">
@@ -140,6 +158,9 @@
                         {{ else }}
                         <span class="status" data-status="{{ .ResponseStatusCode }}">{{ .ResponseStatusCode }}</span>
                         <span class="target">{{ .Target }}</span>
+                        {{ end }}
+                        {{ if .MatchedConfig }}
+                        <span class="matched" title="Dieser konfigurierte Endpoint hat den Request behandelt">Endpoint&nbsp;<code>{{ .MatchedConfig }}</code></span>
                         {{ end }}
                     </div>
                     {{ if not .Error }}
@@ -205,7 +226,33 @@
         function esc(s) {
             return String(s).replace(/[&<>]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]; });
         }
-        function statusClass(s) { return (s && String(s) !== "0") ? "s-" + String(s).charAt(0) : "none"; }
+        function statusClass(s) {
+            if (s && String(s).charAt(0) === "-") { return "s-5"; } // transport error marker (-1) → red
+            return (s && String(s) !== "0") ? "s-" + String(s).charAt(0) : "none";
+        }
+        function statusText(s) {
+            var n = parseInt(s, 10) || 0;
+            return n > 0 ? String(n) : (n < 0 ? "✕" : "—");
+        }
+
+        // relative times ("vor 3 min") for list rows; absolute stays in the title attr
+        function relTime(ms) {
+            var s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+            if (s < 10) { return "gerade eben"; }
+            if (s < 60) { return "vor " + s + " s"; }
+            var m = Math.floor(s / 60);
+            if (m < 60) { return "vor " + m + " min"; }
+            var h = Math.floor(m / 60);
+            if (h < 24) { return "vor " + h + " h"; }
+            return "vor " + Math.floor(h / 24) + " d";
+        }
+        function refreshTimes() {
+            document.querySelectorAll(".req-time[data-ts]").forEach(function (el) {
+                var ts = parseInt(el.getAttribute("data-ts"), 10);
+                if (ts) { el.textContent = relTime(ts); }
+            });
+        }
+        setInterval(refreshTimes, 30000);
 
         function toast(title, desc, kind) {
             var el = document.createElement("div");
@@ -239,9 +286,7 @@
         // status colour classes from data-status, scoped to a freshly rendered subtree
         function applyStatusColors(root) {
             root.querySelectorAll("[data-status]").forEach(function (el) {
-                var s = el.getAttribute("data-status");
-                if (s && s !== "0") { el.classList.add("s-" + s.charAt(0)); }
-                else { el.classList.add("none"); }
+                el.classList.add(statusClass(el.getAttribute("data-status")));
             });
         }
 
@@ -249,6 +294,7 @@
         function applyJson(root) {
             root.querySelectorAll("[data-json]").forEach(function (el) {
                 var raw = el.textContent.trim();
+                el._raw = raw; // kept for "copy as cURL"
                 if (!raw) { el.innerHTML = '<span class="empty">(kein Body)</span>'; return; }
                 var pretty = raw;
                 try { pretty = JSON.stringify(JSON.parse(raw), null, 2); } catch (e) { /* not JSON */ }
@@ -263,17 +309,25 @@
             });
         }
 
-        // tab switching within a detail subtree
+        // tab switching within a detail subtree; the chosen tab is remembered so
+        // stepping through requests keeps e.g. the Response tab open
+        var activeTab = "request";
+        function selectTab(detailRoot, name) {
+            var tab = detailRoot.querySelector('.tab[data-tab="' + name + '"]');
+            if (!tab) { return; }
+            detailRoot.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("active", t === tab); });
+            detailRoot.querySelectorAll("[data-pane]").forEach(function (p) {
+                p.classList.toggle("hidden", p.getAttribute("data-pane") !== name);
+            });
+        }
         function bindTabs(detailRoot) {
             detailRoot.querySelectorAll(".tab").forEach(function (tab) {
                 tab.addEventListener("click", function () {
-                    var name = tab.getAttribute("data-tab");
-                    detailRoot.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("active", t === tab); });
-                    detailRoot.querySelectorAll("[data-pane]").forEach(function (p) {
-                        p.classList.toggle("hidden", p.getAttribute("data-pane") !== name);
-                    });
+                    activeTab = tab.getAttribute("data-tab");
+                    selectTab(detailRoot, activeTab);
                 });
             });
+            if (activeTab !== "request") { selectTab(detailRoot, activeTab); }
         }
 
         // --- modals (persistent, bound once) ---
@@ -299,9 +353,47 @@
         });
 
         // --- detail actions (rebound whenever the detail column is swapped) ---
+        // the origin of the last successful forward is remembered, so repeated
+        // forwarding to the same dev machine needs no retyping
+        function forwardBase() {
+            try { return localStorage.getItem("bend.forwardBase") || "http://localhost:8080"; } catch (e) { return "http://localhost:8080"; }
+        }
+        function prefillTarget() {
+            var target = document.getElementById("targetUrl");
+            var live = document.querySelector(".inspector");
+            if (target && live) { target.value = forwardBase() + (live.getAttribute("data-uri") || ""); }
+        }
+        function rememberForwardBase(targetUrl) {
+            try { localStorage.setItem("bend.forwardBase", new URL(targetUrl).origin); } catch (e) { /* keep previous */ }
+        }
+
         function bindDetailActions(detailRoot) {
             var btnSend = detailRoot.querySelector("#btnSend");
-            if (btnSend) { btnSend.addEventListener("click", function () { openModal("sendModal"); }); }
+            if (btnSend) { btnSend.addEventListener("click", function () { prefillTarget(); openModal("sendModal"); }); }
+            var btnCurl = detailRoot.querySelector("#btnCurl");
+            if (btnCurl) {
+                btnCurl.addEventListener("click", function () {
+                    var head = detailRoot.querySelector(".detail-head");
+                    var live = document.querySelector(".inspector");
+                    var method = (head && head.getAttribute("data-method")) || "GET";
+                    var host = (head && head.getAttribute("data-host")) || location.host;
+                    var uri = (live && live.getAttribute("data-uri")) || "/";
+                    var sq = function (s) { return "'" + String(s).replace(/'/g, "'\\''") + "'"; };
+                    var cmd = "curl -X " + method + " " + sq("http://" + host + uri);
+                    detailRoot.querySelectorAll('[data-pane="request"] table.headers tr').forEach(function (tr) {
+                        var k = tr.querySelector(".h-key"), v = tr.querySelector(".h-val");
+                        if (!k || !v) { return; }
+                        var key = k.textContent.trim();
+                        // curl derives these itself
+                        if (/^(content-length|accept-encoding|connection|host)$/i.test(key)) { return; }
+                        cmd += " \\\n  -H " + sq(key + ": " + v.textContent.trim());
+                    });
+                    var bodyEl = detailRoot.querySelector("#reqBody");
+                    if (bodyEl && bodyEl._raw) { cmd += " \\\n  --data " + sq(bodyEl._raw); }
+                    navigator.clipboard && navigator.clipboard.writeText(cmd);
+                    toast("cURL kopiert", method + " " + uri, "ok");
+                });
+            }
             var btnDelete = detailRoot.querySelector("#btnDelete");
             if (btnDelete) {
                 btnDelete.addEventListener("click", function () {
@@ -331,7 +423,7 @@
                     var status = "", err = "";
                     try { var j = JSON.parse(text); status = j.responseStatusCode || ""; err = j.error || ""; } catch (e) {}
                     if (err) { toast("Weiterleitung fehlgeschlagen", err, "err"); }
-                    else { toast("An Ziel gesendet", (status ? status + " · " : "") + target, "ok"); }
+                    else { rememberForwardBase(target); toast("An Ziel gesendet", (status ? status + " · " : "") + target, "ok"); }
                 }).catch(function (e) { toast("Fehler", String(e), "err"); })
                   .finally(function () { btnSendConfirm.disabled = false; });
             });
@@ -348,24 +440,51 @@
         }
 
         // --- request list: search + pagination (rebound whenever the list is swapped) ---
-        var paused = false;
+        var paused = false;      // survives navigation; only the user toggles it
+        var filterQuery = "";    // survives navigation and is re-applied to swapped-in lists
+        var connected = true;    // SSE connection state, reflected in the live toggle
         var reqScroll = null, listNote = null, loading = false, loadedCount = 0, hasMore = false, oldestId = 0;
+
+        function rowMatchesFilter(row) {
+            var q = filterQuery.toLowerCase();
+            return !q || row.textContent.toLowerCase().indexOf(q) !== -1;
+        }
+        function applyFilter() {
+            document.querySelectorAll("#reqScroll .req").forEach(function (row) {
+                row.style.display = rowMatchesFilter(row) ? "" : "none";
+            });
+            updateNote();
+        }
+
+        function updateLiveToggle() {
+            var lt = document.getElementById("liveToggle");
+            if (!lt) { return; }
+            lt.classList.toggle("paused", paused || !connected);
+            lt.classList.toggle("disconnected", !connected);
+            lt.lastChild.textContent = !connected ? "Getrennt" : (paused ? "Pausiert" : "Live");
+        }
 
         function updateNote() {
             if (!listNote) { return; }
-            listNote.textContent = (hasMore || loadedCount < BEND.requestTotal)
+            var partial = hasMore || loadedCount < BEND.requestTotal;
+            var text = partial
                 ? loadedCount + " von " + BEND.requestTotal + " geladen"
                 : "Alle " + BEND.requestTotal + " geladen";
+            if (filterQuery && partial) { text += " · Filter durchsucht nur die geladenen"; }
+            listNote.textContent = text;
         }
 
         function appendApiRow(it) {
             var row = document.createElement("div");
             row.className = "req";
             row.setAttribute("data-open-request", it.ID);
+            row.setAttribute("role", "button");
+            row.setAttribute("tabindex", "0");
             row.innerHTML =
                 '<span class="method m-' + esc(it.method) + '">' + esc(it.method) + '</span>' +
-                '<div class="req-mid"><div class="req-time">' + esc(it.timestamp) + '</div><div class="req-id">#' + esc(it.ID) + '</div></div>' +
-                '<span class="status ' + statusClass(it.status) + '">' + (it.status ? esc(it.status) : "—") + '</span>';
+                '<div class="req-mid"><div class="req-time" data-ts="' + (it.unix || 0) + '" title="' + esc(it.timestamp) + '">' + (it.unix ? relTime(it.unix) : esc(it.timestamp)) + '</div><div class="req-id">#' + esc(it.ID) + '</div></div>' +
+                '<span class="status ' + statusClass(it.status) + '">' + statusText(it.status) + '</span>';
+            if (!rowMatchesFilter(row)) { row.style.display = "none"; }
             reqScroll.appendChild(row);
         }
 
@@ -385,15 +504,12 @@
         }
 
         function bindListControls(listRoot) {
-            paused = false;
-
             var search = listRoot.querySelector("#search");
             if (search) {
+                search.value = filterQuery;
                 search.addEventListener("input", function () {
-                    var q = search.value.toLowerCase();
-                    listRoot.querySelectorAll("#reqScroll .req").forEach(function (row) {
-                        row.style.display = (!q || row.textContent.toLowerCase().indexOf(q) !== -1) ? "" : "none";
-                    });
+                    filterQuery = search.value;
+                    applyFilter();
                 });
             }
 
@@ -401,10 +517,10 @@
             if (liveToggle) {
                 liveToggle.addEventListener("click", function () {
                     paused = !paused;
-                    liveToggle.classList.toggle("paused", paused);
-                    liveToggle.lastChild.textContent = paused ? "Pausiert" : "Live";
+                    updateLiveToggle();
                 });
             }
+            updateLiveToggle();
 
             reqScroll = listRoot.querySelector("#reqScroll");
             listNote = listRoot.querySelector("#listNote");
@@ -419,7 +535,7 @@
                     if (reqScroll.scrollTop + reqScroll.clientHeight >= reqScroll.scrollHeight - 120) { loadMore(); }
                 });
             }
-            updateNote();
+            applyFilter();
             if (reqScroll && BEND.currentPath && hasMore && reqScroll.scrollHeight <= reqScroll.clientHeight + 4) { loadMore(); }
         }
 
@@ -437,12 +553,12 @@
             if (!listRoot) { return; }
             applyStatusColors(listRoot);
             bindListControls(listRoot);
+            refreshTimes();
         }
 
         function markActiveEndpoint() {
             document.querySelectorAll(".endpoints .ep").forEach(function (ep) {
-                var p = ep.querySelector("[data-open-path]");
-                ep.classList.toggle("active", !!p && p.getAttribute("data-open-path") === BEND.currentPath);
+                ep.classList.toggle("active", ep.getAttribute("data-open-path") === BEND.currentPath);
             });
         }
 
@@ -487,8 +603,7 @@
                     markActiveRequest();
                 }
 
-                var target = document.getElementById("targetUrl");
-                if (target) { target.value = "http://localhost:8080" + (live.getAttribute("data-uri") || ""); }
+                prefillTarget();
 
                 if (doc.title) { document.title = doc.title; }
                 if (push) { history.pushState({detailOnly: !!detailOnly}, "", res.url || url); }
@@ -499,14 +614,49 @@
 
         // --- global click delegation ---
         document.addEventListener("click", function (e) {
+            var delPath = e.target.closest("[data-del-path]");
+            if (delPath) { e.stopPropagation(); confirmDeletePath(delPath.getAttribute("data-del-path")); return; }
             var openPath = e.target.closest("[data-open-path]");
             if (openPath) { e.preventDefault(); navigateTo(pageUrl(openPath.getAttribute("data-open-path")), true, false); return; }
             var openReq = e.target.closest("[data-open-request]");
             if (openReq) { e.preventDefault(); navigateTo(pageUrl(BEND.currentPath, openReq.getAttribute("data-open-request")), true, true); return; }
-            var delPath = e.target.closest("[data-del-path]");
-            if (delPath) { e.stopPropagation(); confirmDeletePath(delPath.getAttribute("data-del-path")); return; }
             var close = e.target.closest("[data-close-modal]");
             if (close) { closeModal(close.getAttribute("data-close-modal")); return; }
+        });
+
+        // --- keyboard: Esc closes modals, Enter/Space activates focused rows,
+        //     ArrowUp/ArrowDown steps through the request list ---
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") {
+                var openModals = document.querySelectorAll(".modal-backdrop.open");
+                if (openModals.length) {
+                    openModals.forEach(function (b) { b.classList.remove("open"); });
+                    if (confirmResolver) { confirmResolver(false); confirmResolver = null; }
+                }
+                return;
+            }
+            if (e.key === "Enter" || e.key === " ") {
+                var t = e.target;
+                if (t && t.getAttribute && (t.hasAttribute("data-open-request") || t.hasAttribute("data-open-path") || t.hasAttribute("data-del-path"))) {
+                    e.preventDefault();
+                    t.click();
+                }
+                return;
+            }
+            if (e.key !== "ArrowDown" && e.key !== "ArrowUp") { return; }
+            var tag = ((e.target && e.target.tagName) || "").toLowerCase();
+            if (tag === "input" || tag === "textarea" || tag === "select") { return; }
+            if (document.querySelector(".modal-backdrop.open")) { return; }
+            var rows = Array.prototype.slice.call(document.querySelectorAll("#reqScroll .req")).filter(function (r) { return r.style.display !== "none"; });
+            if (!rows.length) { return; }
+            var idx = -1;
+            rows.forEach(function (r, i) { if (r.classList.contains("active")) { idx = i; } });
+            var next = idx < 0 ? 0 : (e.key === "ArrowDown" ? idx + 1 : idx - 1);
+            if (next < 0 || next >= rows.length) { return; }
+            e.preventDefault();
+            rows[next].scrollIntoView({block: "nearest"});
+            if (rows[next].focus) { rows[next].focus(); }
+            navigateTo(pageUrl(BEND.currentPath, rows[next].getAttribute("data-open-request")), true, true);
         });
 
         // --- endpoint filter (sidebar, persistent) ---
@@ -522,22 +672,44 @@
             });
         }
 
+        // --- clear all recorded requests (persistent) ---
+        var clearAll = document.getElementById("clearAll");
+        if (clearAll) {
+            clearAll.addEventListener("click", function () {
+                confirmAction("Alle Requests löschen", "Wirklich ALLE aufgezeichneten Requests unwiderruflich löschen?").then(function (ok) {
+                    if (!ok) { return; }
+                    clearAll.disabled = true;
+                    fetch("/api/requests/*", {method: "DELETE"}).then(function (r) {
+                        if (r.ok) { window.location = "/dashboard/"; }
+                        else { toast("Löschen fehlgeschlagen", "Status " + r.status, "err"); clearAll.disabled = false; }
+                    }).catch(function (e) { toast("Fehler", String(e), "err"); clearAll.disabled = false; });
+                });
+            });
+        }
+
         // --- live tail via Server-Sent Events ---
         function bumpEndpoint(path) {
-            var count = null;
-            document.querySelectorAll(".endpoints .ep-count").forEach(function (el) {
-                if (el.getAttribute("data-open-path") === path) { count = el; }
+            var ep = null;
+            document.querySelectorAll(".endpoints .ep").forEach(function (el) {
+                if (el.getAttribute("data-open-path") === path) { ep = el; }
             });
-            if (count) { count.textContent = String((parseInt(count.textContent, 10) || 0) + 1); return; }
+            if (ep) {
+                var count = ep.querySelector(".ep-count");
+                if (count) { count.textContent = String((parseInt(count.textContent, 10) || 0) + 1); }
+                return;
+            }
             var epScroll = document.querySelector(".endpoints .scroll");
             if (!epScroll) { return; }
             var empty = epScroll.querySelector(".col-empty");
             if (empty) { empty.remove(); }
-            var ep = document.createElement("div");
-            ep.className = "ep";
-            ep.innerHTML = '<span class="ep-path" data-open-path="' + esc(path) + '">' + esc(path) + '</span>' +
-                '<span class="ep-count" data-open-path="' + esc(path) + '">1</span>';
-            epScroll.appendChild(ep);
+            var newEp = document.createElement("div");
+            newEp.className = "ep";
+            newEp.setAttribute("data-open-path", path);
+            newEp.setAttribute("role", "button");
+            newEp.setAttribute("tabindex", "0");
+            newEp.innerHTML = '<span class="ep-path">' + esc(path) + '</span>' +
+                '<span class="ep-count">1</span>';
+            epScroll.appendChild(newEp);
         }
 
         function prependRequest(ev) {
@@ -548,10 +720,13 @@
             var row = document.createElement("div");
             row.className = "req new";
             row.setAttribute("data-open-request", ev.id);
+            row.setAttribute("role", "button");
+            row.setAttribute("tabindex", "0");
             row.innerHTML =
                 '<span class="method m-' + esc(ev.method) + '">' + esc(ev.method) + '</span>' +
-                '<div class="req-mid"><div class="req-time">' + esc(ev.timestamp) + '</div><div class="req-id">#' + esc(ev.id) + '</div></div>' +
-                '<span class="status ' + statusClass(ev.status) + '">' + (ev.status ? esc(ev.status) : "—") + '</span>';
+                '<div class="req-mid"><div class="req-time" data-ts="' + (ev.unixMs || 0) + '" title="' + esc(ev.timestamp) + '">' + (ev.unixMs ? relTime(ev.unixMs) : esc(ev.timestamp)) + '</div><div class="req-id">#' + esc(ev.id) + '</div></div>' +
+                '<span class="status ' + statusClass(ev.status) + '">' + statusText(ev.status) + '</span>';
+            if (!rowMatchesFilter(row)) { row.style.display = "none"; }
             scroll.insertBefore(row, scroll.firstChild);
             setTimeout(function () { row.classList.remove("new"); }, 1700);
             loadedCount++;
@@ -561,6 +736,8 @@
 
         if (window.EventSource) {
             var es = new EventSource("/api/events");
+            es.onopen = function () { connected = true; updateLiveToggle(); };
+            es.onerror = function () { connected = false; updateLiveToggle(); };
             es.onmessage = function (e) {
                 var ev;
                 try { ev = JSON.parse(e.data); } catch (x) { return; }
@@ -568,6 +745,28 @@
                 bumpEndpoint(ev.path);
                 if (ev.path === BEND.currentPath && !paused) { prependRequest(ev); }
             };
+        }
+
+        // --- catch URL (topbar) + empty-state curl example, filled client-side ---
+        var catchUrl = document.getElementById("catchUrl");
+        if (catchUrl) { catchUrl.textContent = location.origin; }
+        var copyCatch = document.getElementById("copyCatch");
+        if (copyCatch) {
+            copyCatch.addEventListener("click", function () {
+                navigator.clipboard && navigator.clipboard.writeText(location.origin);
+                toast("Catch-URL kopiert", location.origin, "ok");
+            });
+        }
+        var curlExample = document.getElementById("curlExample");
+        if (curlExample) {
+            curlExample.textContent = "curl -X POST " + location.origin + "/mein/webhook \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"hello\":\"bend\"}'";
+        }
+        var copyCurlExample = document.getElementById("copyCurlExample");
+        if (copyCurlExample) {
+            copyCurlExample.addEventListener("click", function () {
+                navigator.clipboard && navigator.clipboard.writeText(curlExample.textContent);
+                toast("Beispiel kopiert", null, "ok");
+            });
         }
 
         // --- bootstrap ---

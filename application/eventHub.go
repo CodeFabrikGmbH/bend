@@ -9,6 +9,7 @@ type RequestEvent struct {
 	Method    string `json:"method"`
 	Status    int    `json:"status"`
 	Timestamp string `json:"timestamp"`
+	UnixMs    int64  `json:"unixMs"`
 }
 
 // EventHub is a minimal in-memory pub/sub used to push live updates to SSE

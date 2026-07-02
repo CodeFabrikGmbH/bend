@@ -41,6 +41,10 @@ func (rs RequestService) DeleteRequest(path string, requestId string) error {
 	return rs.RequestRepository.DeleteRequestForPath(path, requestId)
 }
 
+func (rs RequestService) DeleteAllRequests() error {
+	return rs.RequestRepository.DeleteAllRequests()
+}
+
 func (rs RequestService) SendRequestToTarget(path, requestId, targetUrl string) request.Response {
 	req := rs.RequestRepository.GetRequest(path, requestId)
 	return rs.Transport.SendRequestToTarget(req, targetUrl)
@@ -62,6 +66,7 @@ func (rs RequestService) TrackRequest(req request.Request) request.Response {
 			Method:    stored.Method,
 			Status:    stored.Response.ResponseStatusCode,
 			Timestamp: time.Unix(0, stored.Timestamp).Format("2 Jan 2006 15:04:05"),
+			UnixMs:    stored.Timestamp / int64(time.Millisecond),
 		})
 	}
 
@@ -82,10 +87,13 @@ func (rs RequestService) getOrCreateResponse(req request.Request) request.Respon
 
 	if configItem.HasTargetPath() {
 		targetPath := configItem.GenerateFinalTargetPath(req.Path)
-		return rs.Transport.SendRequestToTarget(req, targetPath)
+		response := rs.Transport.SendRequestToTarget(req, targetPath)
+		response.MatchedConfig = configItem.Path
+		return response
 	} else {
 		return request.Response{
 			Target:             "no target - mocked response",
+			MatchedConfig:      configItem.Path,
 			ResponseStatusCode: configItem.Response.StatusCode,
 			ResponseBody:       configItem.Response.Body,
 		}

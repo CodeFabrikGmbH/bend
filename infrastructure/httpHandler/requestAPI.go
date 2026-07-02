@@ -55,7 +55,9 @@ func (rs RequestAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case http.MethodDelete:
-		if requestId == "*" {
+		if requestId == "*" && requestPath == "" {
+			err = rs.RequestService.DeleteAllRequests()
+		} else if requestId == "*" {
 			err = rs.RequestService.DeleteAllRequestsForPath(requestPath)
 		} else {
 			err = rs.RequestService.DeleteRequest(requestPath, requestId)

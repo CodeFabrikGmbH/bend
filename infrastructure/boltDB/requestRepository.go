@@ -336,6 +336,34 @@ func (rr RequestRepository) DeletePath(path string) error {
 	})
 }
 
+// DeleteAllRequests removes every recorded request across all paths and clears
+// the per-path count cache in a single transaction. The backfill flag is left
+// untouched so start-up does not re-scan (there is nothing left to count).
+func (rr RequestRepository) DeleteAllRequests() error {
+	db := rr.DB
+
+	return db.Update(func(tx *bolt.Tx) error {
+		var toDelete [][]byte
+		err := tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
+			n := string(name)
+			if strings.HasPrefix(n, bucketPrefix) || n == countsBucket {
+				// copy: the name slice is only valid for the duration of the callback
+				toDelete = append(toDelete, append([]byte(nil), name...))
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		for _, name := range toDelete {
+			if err := tx.DeleteBucket(name); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func (rr RequestRepository) DeleteRequestForPath(path string, id string) error {
 	db := rr.DB
 
